@@ -174,3 +174,7 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
 # Bypass halaman konfirmasi saat klik Google Login
 SOCIALACCOUNT_LOGIN_ON_GET = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://hydrowatch-siagatech-production.up.railway.app"
+]
