@@ -2,6 +2,7 @@ import os
 from google import genai
 from PIL import Image
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 load_dotenv()
 
