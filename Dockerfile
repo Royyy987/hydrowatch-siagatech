@@ -18,8 +18,6 @@ COPY . .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-RUN ls -la static/img/ || echo "FOLDER STATIC HILANG!"
-
 # Eksekusi collectstatic
 RUN python manage.py collectstatic --noinput --clear
 
