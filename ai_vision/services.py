@@ -25,7 +25,7 @@ def estimate_flood_depth(image_path):
         3. Jika gambar adalah foto wajah, dalam ruangan, atau TIDAK ada unsur jalanan sama sekali, jawab dengan teks: SPAM
         """
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         response = model.generate_content([prompt, img])
 
