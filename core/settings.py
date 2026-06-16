@@ -90,7 +90,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgis://postgres:qwertyui1@localhost:5432/hydrowatch_db',
+        default='postgis://postgres.bkrwdbfnvdykgmygqknm:HydroWatch2026!@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
         engine='django.contrib.gis.db.backends.postgis',
         conn_max_age=600
     )

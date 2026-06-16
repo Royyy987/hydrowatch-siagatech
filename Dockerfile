@@ -23,4 +23,5 @@ COPY . .
 RUN python manage.py collectstatic --noinput
 
 # Jalankan server produksi
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:10000"]
+EXPOSE 7860
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "hydrowatch_project.wsgi:application"]
