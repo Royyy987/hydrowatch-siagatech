@@ -178,3 +178,6 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 CSRF_TRUSTED_ORIGINS = [
     "https://hydrowatch-siagatech-production.up.railway.app"
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
