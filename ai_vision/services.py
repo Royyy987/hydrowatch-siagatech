@@ -1,11 +1,12 @@
 import os
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Inisialisasi client dari SDK google-genai
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def estimate_flood_depth(image_path):
     try:
@@ -25,9 +26,11 @@ def estimate_flood_depth(image_path):
         3. Jika gambar adalah foto wajah, dalam ruangan, atau TIDAK ada unsur jalanan sama sekali, jawab dengan teks: SPAM
         """
 
-        model = genai.GenerativeModel('gemini-2.5-flash')
-
-        response = model.generate_content([prompt, img])
+        # Format pemanggilan untuk google-genai menggunakan gemini-2.5-flash
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[prompt, img]
+        )
 
         response_text = response.text.strip().upper()
 
