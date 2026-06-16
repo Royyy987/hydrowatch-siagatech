@@ -91,15 +91,22 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 database_url = os.getenv("DATABASE_URL")
 
-print("DATABASE_URL:", repr(database_url))
+if database_url:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            database_url,
+            engine="django.contrib.gis.db.backends.postgis",
+            conn_max_age=600
+        )
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
-DATABASES = {
-    "default": dj_database_url.parse(
-        database_url,
-        engine="django.contrib.gis.db.backends.postgis",
-        conn_max_age=600
-    )
-}
 
 # Konfigurasi Static untuk Produksi
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
