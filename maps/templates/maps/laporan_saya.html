@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Saya - HydroWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans relative overflow-hidden">
+    
+    <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden md:hidden transition-opacity duration-300 opacity-0"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-gray-800 shadow-2xl flex flex-col transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 rounded-r-3xl">
+        <div class="flex flex-col items-center pt-10 pb-6 border-b dark:border-gray-700 relative">
+            <button onclick="toggleSidebar()" class="md:hidden absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <div class="w-20 h-20 rounded-full border-4 border-blue-100 flex items-center justify-center text-blue-500 text-3xl mb-3 overflow-hidden">
+                <i class="fa-regular fa-user"></i>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white">{{ request.user.username|title|default:"Tamu" }}</h2>
+            <div class="text-xs text-gray-400 mt-1 flex flex-col items-center gap-2">
+                {% if request.user.is_authenticated %}
+                    <p>ID Akun: {{ request.user.id }}</p>
+                    <a href="{% url 'logout' %}" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-1.5 rounded-full text-xs font-bold transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                    </a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-1.5 rounded-full text-xs font-bold transition-colors">
+                        <i class="fa-solid fa-right-to-bracket"></i> Login
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <a href="{% url 'pengaturan_akun' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <i class="fa-solid fa-gear"></i> Pengaturan Akun
+            </a>
+            <a href="{% url 'laporan_saya' %}" class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded-xl relative transition-colors">
+                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full"></div>
+                <i class="fa-solid fa-file-lines"></i> Laporan Saya
+            </a>
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <i class="fa-solid fa-chart-simple"></i> Monitoring Kedalaman
+            </a>
+            <a href="{% url 'pengaturan_notifikasi' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <i class="fa-regular fa-bell"></i> Pengaturan Notifikasi
+            </a>
+            <button onclick="toggleTheme()" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl mt-4 transition-colors">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:block"></i>
+                <span id="theme-text">Ubah Tema Gelap</span>
+            </button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto relative w-full h-full p-6 md:p-10">
+        <button onclick="toggleSidebar()" class="md:hidden absolute top-6 right-6 z-20 bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-xl text-blue-600 dark:text-blue-400 hover:scale-105 transition-transform border border-gray-100 dark:border-gray-700">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
+        <div class="max-w-6xl mx-auto mt-10 md:mt-0">
+            <div class="flex flex-col md:flex-row justify-between md:items-end mb-8 gap-4 pr-12 md:pr-0">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">Riwayat Laporan</h1>
+                    <p class="text-gray-500 dark:text-gray-400 mt-2 text-xs md:text-sm">Daftar genangan air yang telah kamu laporkan untuk mitigasi bencana kota.</p>
+                </div>
+                <a href="{% url 'dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg transition-transform hover:scale-105 flex items-center justify-center gap-2 w-max">
+                    <i class="fa-solid fa-plus"></i> Laporan Baru
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for report in reports %}
+                <div class="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow">
+                    <div class="h-48 w-full bg-gray-200 relative">
+                        {% if report.image %}
+                            <img src="{{ report.image.url }}" alt="Foto Laporan" class="w-full h-full object-cover">
+                        {% else %}
+                            <div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fa-solid fa-image text-3xl"></i></div>
+                        {% endif %}
+                        
+                        {% if report.is_active %}
+                            <div class="absolute top-4 right-4 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                                <i class="fa-solid fa-circle-dot animate-pulse"></i> AKTIF
+                            </div>
+                        {% else %}
+                            <div class="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                                <i class="fa-solid fa-check"></i> SELESAI
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-xs text-gray-400 font-medium">
+                                <i class="fa-regular fa-clock"></i> {{ report.timestamp|date:"d M Y, H:i" }}
+                            </p>
+                        </div>
+                        
+                        <div class="flex items-end justify-between border-t border-gray-100 dark:border-gray-700 pt-4 mt-2">
+                            <div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Estimasi AI:</p>
+                                <div class="text-2xl font-black {% if report.estimated_depth_cm >= 60 %}text-red-600{% elif report.estimated_depth_cm >= 30 %}text-orange-500{% else %}text-yellow-500{% endif %}">
+                                    {{ report.estimated_depth_cm|default:"Proses AI..." }} cm
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <a href="https://www.google.com/maps?q={{ report.location.y }},{{ report.location.x }}" target="_blank" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors">
+                                    <i class="fa-solid fa-location-arrow"></i> Maps
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                    <div class="w-32 h-32 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-300 dark:text-gray-600 mb-6">
+                        <i class="fa-solid fa-folder-open text-5xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Belum ada laporan.</h3>
+                    <p class="text-gray-500 dark:text-gray-400 max-w-md text-sm">Kamu belum pernah mengirimkan data genangan air. Laporan pertamamu akan muncul di sini.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const htmlTag = document.documentElement;
+            if (htmlTag.classList.contains('dark')) {
+                htmlTag.classList.remove('dark');
+            } else {
+                htmlTag.classList.add('dark');
+            }
+        }
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+    </script>
+</body>
+</html>

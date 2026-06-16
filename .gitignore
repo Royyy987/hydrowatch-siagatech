@@ -1,0 +1,22 @@
+# Kunci Rahasia & Environment
+.env
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# File Database Lokal
+db.sqlite3
+
+# Media & Uploads Lokal
+media/
+
+# Folder Statis Hasil Collect 
+staticfiles/

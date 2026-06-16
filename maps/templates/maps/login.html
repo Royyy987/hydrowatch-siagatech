@@ -1,0 +1,145 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - HydroWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* KUNCI MATI SCROLLBAR DARI ROOT SYSTEM */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden !important;
+        }
+
+        /* Animasi Masuk */
+        @keyframes slideUpFade {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-enter {
+            opacity: 0;
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row bg-white font-sans w-screen h-screen overflow-hidden m-0 p-0">
+    
+    <div class="hidden md:flex w-full md:w-[55%] lg:w-[60%] h-full bg-gradient-to-br from-blue-900 to-slate-900 text-white p-8 lg:p-12 flex-col justify-center relative">
+        <div class="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 pointer-events-none"></div>
+
+        <div class="max-w-xl mx-auto relative z-10 w-full">
+            
+            <div class="animate-enter delay-100 mb-6">
+                <img src="{% static 'img/logo_hydrowatch.png' %}" alt="HydroWatch Logo" class="w-64 md:w-80 object-contain filter brightness-0 invert drop-shadow-lg">
+            </div>
+            
+            <h2 class="animate-enter delay-200 text-3xl font-extrabold mb-3 leading-tight tracking-tight">Sistem Mitigasi Banjir Cerdas Berbasis AI</h2>
+            <p class="animate-enter delay-300 text-blue-100/80 text-sm mb-8 leading-relaxed">
+                Platform navigasi geospasial untuk tata kota Samarinda. Hindari rute rawan genangan dan laporkan kondisi terkini secara visual menggunakan kecerdasan buatan.
+            </p>
+
+            <h3 class="animate-enter delay-400 text-base font-bold mb-4 text-blue-200 border-b border-white/10 pb-2">Cara Menggunakan HydroWatch</h3>
+            
+            <div class="space-y-4 animate-enter delay-400">
+                <div class="flex gap-4">
+                    <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
+                        <i class="fa-solid fa-map-location-dot text-lg text-blue-300"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-0.5">Pantau Command Center</h4>
+                        <p class="text-blue-100/60 text-xs leading-relaxed">Lihat hamparan poligon zona banjir secara real-time di atas peta. Area merah (Bahaya), oranye (Awas), kuning (Waspada).</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10">
+                        <i class="fa-solid fa-camera-retro text-lg text-blue-300"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-0.5">Smart Depth Reporting</h4>
+                        <p class="text-blue-100/60 text-xs leading-relaxed">Buka menu kamera, jepret foto jalan. AI Computer Vision akan menganalisis referensi objek untuk mengestimasi kedalaman.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="animate-enter delay-400 mt-8 pt-4 border-t border-white/10 text-[10px] text-blue-200/40">
+                &copy; 2026 Tim SiagaTech. Praktikum Pemrograman Web Lanjut.
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full md:w-[45%] lg:w-[40%] h-full flex flex-col justify-center items-center p-8 relative z-10 bg-white shadow-2xl shadow-black/20">
+        <div class="w-full max-w-sm">
+            
+            <div class="md:hidden text-center mb-8 animate-enter delay-100 mt-4">
+                <img src="{% static 'img/logo_hydrowatch.png' %}" alt="HydroWatch Logo" class="w-64 mx-auto mb-4 object-contain scale-50 drop-shadow-md">
+            </div>
+
+            <div class="mb-6 animate-enter delay-100">
+                <h2 class="text-2xl font-black text-gray-900 tracking-tight">Selamat Datang</h2>
+                <p class="text-xs text-gray-500 mt-1">Masuk untuk mengakses Command Center.</p>
+            </div>
+
+            <form method="POST" class="space-y-4 animate-enter delay-200">
+                {% csrf_token %}
+                {% if form.errors %}
+                    <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-lg">
+                        <p class="text-red-700 text-xs font-bold">Username atau password salah.</p>
+                    </div>
+                {% endif %}
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Username</label>
+                    <input type="text" name="username" class="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" required>
+                </div>
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
+                    <input type="password" name="password" class="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" required>
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-lg shadow-blue-600/30 mt-4">
+                    Masuk ke Sistem
+                </button>
+            </form>
+
+            <div class="mt-6 mb-6 flex items-center justify-between animate-enter delay-300">
+                <span class="w-1/5 border-b border-gray-200"></span>
+                <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Atau masuk dengan</span>
+                <span class="w-1/5 border-b border-gray-200"></span>
+            </div>
+
+            <a href="{% provider_login_url 'google' %}" class="animate-enter delay-300 w-full bg-white text-gray-700 font-bold py-2.5 text-sm rounded-xl border border-gray-200 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <svg viewBox="0 0 24 24" class="w-4 h-4">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Masuk dengan Google
+            </a>
+
+            <div class="mt-8 text-center animate-enter delay-400">
+                <p class="text-[11px] text-gray-500">
+                    Belum punya akses? 
+                    <a href="{% url 'register' %}" class="text-blue-600 font-bold hover:underline transition-colors">Daftar sekarang</a>
+                </p>
+            </div>
+            
+        </div>
+    </div>
+    
+</body>
+</html>

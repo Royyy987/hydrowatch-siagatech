@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroWatch Dashboard</title>
+
+    <style>
+        .dark .leaflet-tile {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+            transition: filter 0.3s ease-in-out;
+        }
+
+        /* Menyembunyikan scrollbar untuk area horizontal scroll di opsi AI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+
+    <script>
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Konfigurasi Tailwind untuk mendeteksi class 'dark' secara manual
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'glass-light': 'rgba(255, 255, 255, 0.8)',
+                        'glass-dark': 'rgba(31, 41, 55, 0.8)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 transition-colors duration-300 relative">
+
+    <div id="permission-onboarding" class="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-xl flex items-center justify-center transition-opacity duration-500 hidden">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-sm w-11/12 text-center shadow-2xl border border-gray-100 dark:border-gray-700 transform transition-transform scale-95" id="permission-box">
+            <div class="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <i class="fa-solid fa-map-location-dot text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-black text-gray-900 dark:text-white mb-2">Akses Diperlukan</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                HydroWatch membutuhkan izin <b>Lokasi GPS</b> untuk memandu rute amanmu, dan <b>Kamera</b> untuk menganalisis kedalaman genangan banjir lewat AI.
+            </p>
+            <button onclick="requestBrowserPermissions()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform active:scale-95 mb-3 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check-double"></i> Berikan Izin Sekarang
+            </button>
+            <p class="text-[9px] text-gray-400">Pilih "Allow" atau "Izinkan" pada pop-up browser yang muncul setelah ini.</p>
+        </div>
+    </div>
+
+    <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden md:hidden transition-opacity duration-300 opacity-0"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-r border-white/40 dark:border-gray-700/50 shadow-2xl flex flex-col transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 rounded-r-3xl">
+        <div class="flex flex-col items-center pt-10 pb-6 border-b dark:border-gray-700 relative">
+            
+            <button onclick="toggleSidebar()" class="md:hidden absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="w-20 h-20 rounded-full border-4 border-blue-100 flex items-center justify-center text-blue-500 text-3xl mb-3 overflow-hidden">
+                <i class="fa-regular fa-user"></i>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+                {% if request.user.is_authenticated %}
+                    {{ request.user.username|title }}
+                {% else %}
+                    Pengguna Tamu
+                {% endif %}
+            </h2>
+            <div class="text-xs text-gray-400 mt-1 flex flex-col items-center gap-2">
+                {% if request.user.is_authenticated %}
+                    <p>ID Akun: {{ request.user.id }}</p>
+                    <a href="{% url 'logout' %}" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-1.5 rounded-full text-xs font-bold transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                    </a>
+                {% else %}
+                    <p>Akses Terbatas</p>
+                    <a href="{% url 'login' %}" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-1.5 rounded-full text-xs font-bold transition-colors">
+                        <i class="fa-solid fa-right-to-bracket"></i> Login
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <a href="{% url 'pengaturan_akun' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <i class="fa-solid fa-gear"></i> Pengaturan Akun
+            </a>
+            
+            <a href="{% url 'laporan_saya' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <i class="fa-regular fa-file-lines"></i> Laporan Saya
+            </a>
+            
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded-xl relative transition-colors">
+                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full"></div>
+                <i class="fa-solid fa-chart-simple"></i> Monitoring Kedalaman
+            </a>
+            
+            <a href="{% url 'pengaturan_notifikasi' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <i class="fa-regular fa-bell"></i> Pengaturan Notifikasi
+            </a>
+
+            <button onclick="toggleTheme()" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl mt-4 transition-colors">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:block"></i>
+                <span id="theme-text">Ubah Tema Gelap</span>
+            </button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 relative w-full h-full">
+        <div id="global-status-banner" class="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 font-black text-xs md:text-sm tracking-wide transition-all duration-500 border-2 bg-green-500 text-white border-green-600 w-11/12 md:w-auto justify-center">
+            <i id="global-status-icon" class="fa-solid fa-shield-halved text-lg"></i>
+            <span id="global-status-text">KOTA AMAN: TIDAK ADA TITIK BANJIR AKTIF</span>
+        </div>
+
+        <div id="map" class="absolute inset-0 z-0"></div>
+
+        {% if messages %}
+        <div id="django-messages-container" class="absolute top-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 md:w-auto pointer-events-none transition-opacity duration-500">
+            {% for message in messages %}
+                <div class="px-6 py-3 rounded-full text-white text-xs md:text-sm font-bold shadow-2xl text-center backdrop-blur-md animate-enter
+                    {% if message.tags == 'error' %} bg-red-600/90 border border-red-400
+                    {% elif message.tags == 'warning' %} bg-yellow-500/90 text-yellow-900 border border-yellow-400
+                    {% else %} bg-green-500/90 border border-green-400 {% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <script>
+            setTimeout(() => {
+                const msgContainer = document.getElementById('django-messages-container');
+                if (msgContainer) {
+                    msgContainer.style.opacity = '0'; 
+                    setTimeout(() => msgContainer.remove(), 500); 
+                }
+            }, 4000); 
+        </script>
+        {% endif %}
+
+        <button onclick="toggleSidebar()" class="md:hidden absolute top-5 left-4 z-20 bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-xl text-blue-600 dark:text-blue-400 hover:scale-105 transition-transform border border-gray-100 dark:border-gray-700">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
+        <div class="absolute top-5 left-20 md:top-6 md:left-6 z-10 w-[calc(100vw-6.5rem)] md:w-72">
+            <div class="bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center px-4 py-3 relative z-20">
+                <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Cari Live CCTV Smagov..." class="bg-transparent border-none outline-none ml-3 w-full text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400" autocomplete="off">
+            </div>
+            
+            <div id="searchResults" class="absolute top-full left-0 mt-2 w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden hidden z-10 border border-white/20 dark:border-gray-700">
+                <ul id="searchList" class="max-h-60 overflow-y-auto text-sm"></ul>
+            </div>
+        </div>
+
+        <div id="alert-container" class="absolute top-20 left-1/2 -translate-x-1/2 md:top-6 z-10 cursor-pointer hidden opacity-0 transition-opacity duration-300 w-11/12 md:w-auto flex justify-center">
+            <div id="alert-banner" class="bg-green-500 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 font-bold text-xs md:text-sm tracking-wide transition-colors duration-500 whitespace-nowrap">
+                <i id="alert-icon" class="fa-solid fa-check-circle"></i>
+                <span id="alert-text">RUTE AMAN: TIDAK ADA GENANGAN</span>
+            </div>
+        </div>
+
+        <div class="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-10 scale-[0.70] md:scale-100 origin-right">
+            <div class="bg-glass-light dark:bg-glass-dark backdrop-blur-md border border-white/20 dark:border-gray-700/50 p-6 rounded-3xl shadow-2xl flex flex-col items-center">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-widest mb-1 text-center">PERKIRAAN<br>KEDALAMAN</p>
+                <h1 id="depth-text" class="text-5xl font-black text-gray-900 dark:text-white mb-6">0 cm</h1>
+
+                <div class="w-12 h-40 bg-blue-100 dark:bg-gray-700 rounded-full relative overflow-hidden shadow-inner border-2 border-white dark:border-gray-600">
+                    <div id="water-level" class="absolute bottom-0 w-full bg-blue-500 transition-all duration-1000" style="height: 0%;"></div>
+                    <div class="absolute inset-0 flex flex-col justify-between py-2">
+                        <div class="w-3 h-0.5 bg-blue-900/30 dark:bg-white/30 mx-auto"></div>
+                        <div class="w-5 h-0.5 bg-blue-900/30 dark:bg-white/30 mx-auto"></div>
+                        <div class="w-3 h-0.5 bg-blue-900/30 dark:bg-white/30 mx-auto"></div>
+                        <div class="w-5 h-0.5 bg-blue-900/30 dark:bg-white/30 mx-auto"></div>
+                        <div class="w-3 h-0.5 bg-blue-900/30 dark:bg-white/30 mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="openReportModal()" class="absolute bottom-6 right-4 md:bottom-10 md:right-10 z-[9999] bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-transform hover:scale-110 flex items-center gap-3">
+            <i class="fa-solid fa-camera text-xl md:text-2xl"></i>
+            <span class="font-bold pr-2 text-sm md:text-base hidden md:block">Lapor Genangan</span>
+        </button>
+
+        <div id="reportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md shadow-2xl border border-white/20">
+                <h2 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-1">Lapor Genangan</h2>
+                <p class="text-xs text-gray-500 mb-4">Arahkan kamera ke jalan yang tergenang air.</p>
+
+                <div class="mb-5 bg-red-50 border border-red-200 rounded-xl p-3">
+                    <h4 class="text-[11px] font-black text-red-700 uppercase flex items-center gap-1 mb-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Peringatan Sistem AI
+                    </h4>
+                    <p class="text-[10px] text-red-600 leading-tight font-medium">
+                        Dilarang mengunggah foto wajah (selfie), dalam ruangan, atau hal yang tidak relevan. Mengirim SPAM 3 kali berturut-turut akan mengakibatkan <b>akun dibekukan selama 1 jam</b>.
+                    </p>
+                </div>
+
+                <form action="/reports/submit/" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+
+                    <div class="mb-5">
+                        <button type="button" id="btn-open-camera" onclick="startCamera()" class="w-full py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-solid fa-camera text-4xl mb-1 text-blue-500"></i>
+                            <span class="font-semibold text-sm">Buka Kamera Sekarang</span>
+                        </button>
+                        
+                        <div id="camera-container" class="relative w-full h-56 bg-black rounded-2xl overflow-hidden shadow-inner hidden">
+                            <video id="camera-stream" autoplay playsinline class="w-full h-full object-cover"></video>
+                            
+                            <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10">
+                                <div class="w-40 h-40 border-2 border-white/30 relative flex items-center justify-center mb-4">
+                                    <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-green-400"></div>
+                                    <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-green-400"></div>
+                                    <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-green-400"></div>
+                                    <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-green-400"></div>
+                                    
+                                    <i class="fa-solid fa-plus text-white/50 text-xl"></i>
+                                </div>
+                                
+                                <div class="absolute bottom-16 text-white text-[10px] md:text-xs font-bold bg-black/60 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg text-center">
+                                    Posisikan genangan & objek (ban/trotoar)<br>di dalam kotak ini
+                                </div>
+                            </div>
+                            <button type="button" onclick="takeSnapshot()" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur text-blue-600 px-6 py-2 rounded-full font-bold shadow-xl hover:bg-white flex items-center gap-2 transition-transform hover:scale-105 z-20">
+                                <i class="fa-solid fa-camera-retro"></i> Jepret
+                            </button>
+                        </div>
+                        
+                        <div id="preview-container" class="relative w-full h-56 rounded-2xl overflow-hidden shadow-inner hidden border-2 border-blue-500">
+                            <img id="photo-preview" class="w-full h-full object-cover" />
+                            <button type="button" onclick="startCamera()" class="absolute top-3 right-3 bg-red-500/90 text-white p-3 rounded-full shadow-lg hover:bg-red-600 transition-transform hover:scale-105">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                        
+                        <canvas id="canvas" class="hidden"></canvas>
+                        <input type="file" id="image-input" name="image" class="hidden" required>
+                    </div>
+
+                    <div id="location-status" class="text-[10px] md:text-xs text-yellow-600 mb-5 flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Melacak lokasi GPS...
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeReportModal()" class="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200">Batal</button>
+                        <button type="submit" id="submitBtn" disabled class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Kirim ke AI</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="ai-chat-widget" class="absolute bottom-6 left-4 right-20 md:bottom-10 md:left-10 md:right-auto z-20 w-[calc(100vw-6rem)] md:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-blue-100 dark:border-gray-700 overflow-hidden flex flex-col transition-all">
+            <div class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 md:py-4 flex justify-between items-center cursor-pointer transition-colors" onclick="toggleChat()">
+                <div class="font-bold flex items-center gap-2 text-xs md:text-sm">
+                    <i class="fa-solid fa-robot"></i> AI Navigator
+                </div>
+                <i class="fa-solid fa-chevron-up text-xs md:text-sm" id="chat-toggle-icon"></i>
+            </div>
+            
+            <div id="chat-body" class="flex-col h-72 md:h-80 hidden">
+                <div id="chat-messages" class="flex-1 p-3 md:p-4 overflow-y-auto bg-gray-50 dark:bg-gray-900 text-[11px] md:text-xs space-y-3">
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-xl rounded-tl-none shadow-sm text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-gray-700 w-11/12 leading-relaxed">
+                        Halo {% if request.user.is_authenticated %}{{ request.user.username|title }}{% else %}Tamu{% endif %}! Mau ke mana hari ini? Pilih opsi di bawah atau ketik tujuanmu.
+                    </div>
+                </div>
+                
+                <div class="px-3 pb-2 bg-gray-50 dark:bg-gray-900 flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
+                    <button onclick="sendChatMessage('Bagaimana kondisi genangan air di sekitarku saat ini?')" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors border border-blue-200 dark:border-blue-700">
+                        <i class="fa-solid fa-location-crosshairs"></i> Cek Sekitarku
+                    </button>
+                    <button onclick="sendChatMessage('Carikan rute alternatif yang aman dari banjir menuju Kampus UMKT.')" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors border border-blue-200 dark:border-blue-700">
+                        <i class="fa-solid fa-graduation-cap"></i> Ke Kampus UMKT
+                    </button>
+                    <button onclick="sendChatMessage('Carikan rute alternatif yang aman dari banjir menuju Mall Lembuswana.')" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors border border-blue-200 dark:border-blue-700">
+                        <i class="fa-solid fa-shop"></i> Ke Mall Lembuswana
+                    </button>
+                </div>
+
+                <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Tujuan spesifik..." class="flex-1 bg-gray-100 dark:bg-gray-900 border-none rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-200 outline-none transition-all">
+                    <button onclick="sendChatMessage()" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition-transform active:scale-95">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 1. MANAGEMENT UTILITY TEMA & SIDEBAR HP
+        function toggleTheme() {
+            const htmlTag = document.documentElement;
+            const themeText = document.getElementById('theme-text');
+
+            if (htmlTag.classList.contains('dark')) {
+                htmlTag.classList.remove('dark');
+                themeText.innerText = 'Ubah Tema Gelap';
+            } else {
+                htmlTag.classList.add('dark');
+                themeText.innerText = 'Ubah Tema Terang';
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+    </script>
+
+    <script>
+        // 2. MANAGEMENT INFRASTRUKTUR GEOSPASIAL
+        const map = L.map('map', {
+            zoomControl: false 
+        }).setView([-0.502106, 117.153709], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+                
+                map.flyTo([userLat, userLng], 16, {
+                    animate: true,
+                    duration: 1.5 
+                });
+
+                L.marker([userLat, userLng]).addTo(map)
+                    .bindPopup('<div class="text-xs font-bold text-center">Lokasi Kamu Sekarang</div>')
+                    .openPopup();
+                    
+            }, function(error) {
+                console.warn("Akses lokasi ditolak atau gagal. Peta tetap di default Samarinda.");
+            });
+        }
+
+        map.on('click', function() {
+            const container = document.getElementById('alert-container');
+            const depthText = document.getElementById('depth-text');
+            const waterLevel = document.getElementById('water-level');
+
+            container.classList.remove('opacity-100');
+            container.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                container.classList.add('hidden');
+            }, 300); 
+
+            depthText.innerText = "0 cm";
+            waterLevel.style.height = "0%";
+        });
+
+        let floodLayer; 
+
+        function loadFloodData() {
+            fetch('/api/flood-data/')
+                .then(response => response.json())
+                .then(data => {
+                    // --- 1. LOGIKA BANNER CUACA GLOBAL ---
+                    let maxDepth = 0;
+                    data.features.forEach(feature => {
+                        if (feature.properties.kedalaman > maxDepth) {
+                            maxDepth = feature.properties.kedalaman;
+                        }
+                    });
+
+                    const globalBanner = document.getElementById('global-status-banner');
+                    const globalIcon = document.getElementById('global-status-icon');
+                    const globalText = document.getElementById('global-status-text');
+
+                    globalBanner.classList.remove('hidden'); // Tampilkan banner
+                    globalBanner.className = "absolute top-4 left-1/2 -translate-x-1/2 z-20 px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 font-black text-xs md:text-sm tracking-wide transition-all duration-500 border-2 w-11/12 md:w-auto justify-center backdrop-blur-md";
+
+                    // Ganti warna sesuai level ancaman tertinggi se-Samarinda
+                    if (maxDepth >= 60) {
+                        globalBanner.classList.add('bg-red-600/90', 'text-white', 'border-red-400');
+                        globalIcon.className = "fa-solid fa-radiation animate-pulse";
+                        globalText.innerText = "STATUS KOTA: BAHAYA MUTLAK (>60cm)";
+                    } else if (maxDepth >= 30) {
+                        globalBanner.classList.add('bg-orange-500/90', 'text-white', 'border-orange-400');
+                        globalIcon.className = "fa-solid fa-triangle-exclamation";
+                        globalText.innerText = "STATUS KOTA: AWAS (>30cm)";
+                    } else if (maxDepth > 0) {
+                        globalBanner.classList.add('bg-yellow-400/90', 'text-yellow-900', 'border-yellow-500');
+                        globalIcon.className = "fa-solid fa-cloud-showers-heavy";
+                        globalText.innerText = "STATUS KOTA: WASPADA (ADA GENANGAN)";
+                    } else {
+                        globalBanner.classList.add('bg-green-500/90', 'text-white', 'border-green-400');
+                        globalIcon.className = "fa-solid fa-shield-halved";
+                        globalText.innerText = "KOTA AMAN: TIDAK ADA GENANGAN";
+                    }
+
+                    // --- 2. HAPUS POLIGON LAMA JIKA ADA ---
+                    if (floodLayer) {
+                        map.removeLayer(floodLayer);
+                    }
+
+                    // --- 3. GAMBAR POLIGON BARU DARI DATABASE ---
+                    floodLayer = L.geoJSON(data, {
+                        style: function (feature) {
+                            let depth = feature.properties.kedalaman;
+                            let polyColor = depth >= 60 ? "#ef4444" : (depth >= 30 ? "#f97316" : "#eab308");
+
+                            return {
+                                color: polyColor,
+                                weight: 2,
+                                fillColor: polyColor,
+                                fillOpacity: 0.5
+                            };
+                        },
+                        onEachFeature: function (feature, layer) {
+                            let depth = feature.properties.kedalaman;
+                            let popupContent = `
+                                <div class="text-center font-sans p-1">
+                                    <b class="text-gray-800 text-sm flex items-center justify-center gap-1">
+                                        <i class="fa-solid fa-water text-blue-500"></i> Zona Terdampak
+                                    </b>
+                                    <p class="text-xs text-gray-500 mt-2">Estimasi Kedalaman AI:</p>
+                                    <p class="text-2xl font-black text-gray-900">${depth} cm</p>
+                                </div>
+                            `;
+                            layer.bindPopup(popupContent);
+                            layer.on('click', function() {
+                                updateAdaptiveWarning(depth);
+                            });
+                        }
+                    }).addTo(map);
+                })
+                .catch(error => console.error('Error memuat data geospasial poligon peta:', error));
+        }
+
+        // Panggil fungsi pertama kali saat halaman dimuat
+        loadFloodData();
+
+        // --- 4. AUTO-REFRESH SETIAP 15 DETIK ---
+        setInterval(loadFloodData, 15000);
+    </script>
+
+    <script>
+        // 3. HARDWARE CAPTURING INTERACTIVE LOGIC (CAMERA & GEOLOCATION CAPTURE)
+        let videoStream;
+
+        function openReportModal() {
+            // CEK APAKAH USER SUDAH LOGIN
+            {% if not request.user.is_authenticated %}
+                window.location.href = "{% url 'login' %}";
+                return;
+            {% endif %}
+            
+            document.getElementById('reportModal').classList.remove('hidden');
+
+            if (navigator.geolocation) {
+                // Pemanggilan fungsi getCurrentPosition
+                navigator.geolocation.getCurrentPosition(
+                    // Parameter 1: Jika Sukses
+                    function(position) {
+                        document.getElementById('latitude').value = position.coords.latitude;
+                        document.getElementById('longitude').value = position.coords.longitude;
+
+                        const status = document.getElementById('location-status');
+                        status.className = 'text-[10px] md:text-xs text-green-600 mb-5 flex items-center gap-2 bg-green-50 dark:bg-green-900/20 p-2 rounded-lg';
+                        status.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> <span class="font-bold">Satelit GPS Terkunci!</span>';
+
+                        checkSubmitReady();
+                    }, 
+                    // Parameter 2: Jika Error
+                    function(error) {
+                        const status = document.getElementById('location-status');
+                        status.className = 'text-[10px] md:text-xs text-red-600 mb-5 flex items-center gap-2 bg-red-50 p-2 rounded-lg';
+                        status.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>Akses GPS ditolak/gagal.</span>';
+                    },
+                    { 
+                        enableHighAccuracy: true, 
+                        timeout: 10000,           
+                        maximumAge: 0             
+                    }
+                );
+            }
+        }
+
+        function startCamera() {
+            document.getElementById('btn-open-camera').classList.add('hidden');
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('camera-container').classList.remove('hidden');
+            
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    videoStream = stream;
+                    document.getElementById('camera-stream').srcObject = stream;
+                })
+                .catch(err => {
+                    alert("Gagal mengakses kamera. Pastikan browser memberi izin akses kamera.");
+                    console.error(err);
+                });
+        }
+
+        function takeSnapshot() {
+            const video = document.getElementById('camera-stream');
+            const canvas = document.getElementById('canvas');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imgPreview = document.getElementById('photo-preview');
+            imgPreview.src = canvas.toDataURL('image/jpeg');
+
+            videoStream.getTracks().forEach(track => track.stop());
+
+            document.getElementById('camera-container').classList.add('hidden');
+            document.getElementById('preview-container').classList.remove('hidden');
+            
+            canvas.toBlob(blob => {
+                const file = new File([blob], "foto_banjir.jpg", { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                document.getElementById('image-input').files = dataTransfer.files;
+
+                checkSubmitReady();
+            }, 'image/jpeg');
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function checkSubmitReady() {
+            const lat = document.getElementById('latitude').value;
+            const file = document.getElementById('image-input').files.length;
+
+            if (lat !== "" && file > 0) {
+                document.getElementById('submitBtn').disabled = false;
+            } else {
+                document.getElementById('submitBtn').disabled = true;
+            }
+        }
+    </script>
+
+    <script>
+        // 4. ADAPTIVE WARNING SYSTEM LOGIC CONTROL
+        function updateAdaptiveWarning(depthCm) {
+            const container = document.getElementById('alert-container'); 
+            const banner = document.getElementById('alert-banner');
+            const icon = document.getElementById('alert-icon');
+            const text = document.getElementById('alert-text');
+            const depthText = document.getElementById('depth-text');
+            const waterLevel = document.getElementById('water-level');
+            
+            container.classList.remove('hidden');
+            setTimeout(() => {
+                container.classList.remove('opacity-0');
+                container.classList.add('opacity-100');
+            }, 10);
+            
+            depthText.innerText = depthCm + " cm";
+            let percent = Math.min(depthCm, 100); 
+            waterLevel.style.height = percent + "%";
+            
+            banner.classList.remove('bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'text-yellow-900');
+            text.className = "";
+            
+            if (depthCm >= 60) { 
+                banner.classList.add('bg-red-500', 'text-white');
+                icon.className = "fa-solid fa-circle-exclamation";
+                text.innerText = "BAHAYA BANJIR: DILARANG MELINTAS!";
+            } else if (depthCm >= 30) { 
+                banner.classList.add('bg-orange-500', 'text-white');
+                icon.className = "fa-solid fa-triangle-exclamation";
+                text.innerText = "AWAS GENANGAN: HARAP HATI-HATI";
+            } else if (depthCm > 0) { 
+                banner.classList.add('bg-yellow-500', 'text-yellow-900');
+                icon.className = "fa-solid fa-cloud-rain";
+                text.className = "text-yellow-900 font-bold"; 
+                text.innerText = "HATI-HATI: JALANAN LICIN & TERGENANG";
+            } else { 
+                banner.classList.add('bg-green-500', 'text-white');
+                icon.className = "fa-solid fa-check-circle";
+                text.innerText = "RUTE AMAN: TIDAK ADA GENANGAN";
+            }
+        }
+    </script>
+
+    <script>
+        // 5. SISTEM PENCARIAN TERINTEGRASI CCTV SMAGOV
+        const cctvDatabase = [
+            { nama: "Bendungan Lempake", url: "https://pwa.samagov.id/masyarakat/pantau-sekitar" },
+            { nama: "Citra Niaga 3", url: "https://pwa.samagov.id/masyarakat/pantau-sekitar" },
+            { nama: "Citra Niaga 4", url: "https://pwa.samagov.id/masyarakat/pantau-sekitar" },
+            { nama: "Depan Balaikota", url: "https://pwa.samagov.id/masyarakat/pantau-sekitar" },
+            { nama: "Depan Polresta", url: "https://pwa.samagov.id/masyarakat/pantau-sekitar" },
+            { nama: "Depan RS SMC", url: "https://pwa.samagov.id/masyarakat/pantau-sekitar" },
+        ];
+
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const searchList = document.getElementById('searchList');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            searchList.innerHTML = ''; 
+
+            if (query.length === 0) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+
+            const filteredData = cctvDatabase.filter(cctv => cctv.nama.toLowerCase().includes(query));
+
+            if (filteredData.length > 0) {
+                searchResults.classList.remove('hidden');
+                
+                filteredData.forEach(cctv => {
+                    const li = document.createElement('li');
+                    
+                    li.className = "px-4 py-3 text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 last:border-0 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center transition-colors";
+                    
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-video text-red-500"></i> 
+                            <span class="font-medium">${cctv.nama}</span>
+                        </div>
+                        <span class="text-[10px] font-bold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 px-2 py-1 rounded-md flex items-center gap-1" title="Membutuhkan Akun Smagov">
+                            <i class="fa-solid fa-lock"></i> Smagov
+                        </span>
+                    `;
+                    
+                    li.addEventListener('click', () => {
+                        window.open(cctv.url, '_blank');
+                        searchInput.value = '';
+                        searchResults.classList.add('hidden');
+                    });
+                    
+                    searchList.appendChild(li);
+                });
+            } else {
+                searchResults.classList.remove('hidden');
+                searchList.innerHTML = `<li class="px-4 py-3 text-gray-500 text-center italic">Lokasi CCTV tidak ditemukan</li>`;
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+    </script>
+
+    <script>
+        // 6. LOGIKA CHATBOT DEEPSEEK
+        let currentUserLat = null;
+        let currentUserLon = null;
+
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(pos => {
+                currentUserLat = pos.coords.latitude;
+                currentUserLon = pos.coords.longitude;
+            });
+        }
+
+        function toggleChat() {
+            const body = document.getElementById('chat-body');
+            const icon = document.getElementById('chat-toggle-icon');
+            if (body.classList.contains('hidden')) {
+                body.classList.remove('hidden');
+                body.classList.add('flex');
+                icon.className = "fa-solid fa-chevron-down text-sm";
+            } else {
+                body.classList.add('hidden');
+                body.classList.remove('flex');
+                icon.className = "fa-solid fa-chevron-up text-sm";
+            }
+        }
+
+        async function sendChatMessage(quickText = null) {
+            const input = document.getElementById('chat-input');
+            const message = quickText || input.value.trim();
+            
+            if (!message) return;
+
+            const chatMessages = document.getElementById('chat-messages');
+            
+            chatMessages.innerHTML += `
+                <div class="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-xl rounded-tr-none shadow-sm text-blue-800 dark:text-blue-200 w-11/12 ml-auto text-right leading-relaxed">
+                    ${message}
+                </div>
+            `;
+            input.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const loadingId = 'loading-' + Date.now();
+            chatMessages.innerHTML += `
+                <div id="${loadingId}" class="text-gray-400 text-[10px] italic w-11/12 mt-2">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> AI menganalisis rute...
+                </div>
+            `;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const response = await fetch('/api/ai-chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        lat: currentUserLat,
+                        lon: currentUserLon
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+                
+                chatMessages.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-xl rounded-tl-none shadow-sm text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-gray-700 w-11/12 leading-relaxed">
+                        ${data.reply}
+                    </div>
+                `;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                document.getElementById(loadingId).innerText = "Gagal menghubungi server AI.";
+            }
+        }
+
+        document.getElementById('chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    </script>
+
+    <script>
+        async function checkAndShowPermissions() {
+            const onboardingModal = document.getElementById('permission-onboarding');
+            const box = document.getElementById('permission-box');
+            
+            try {
+                // Cek status izin saat ini (didukung oleh Chrome/Edge)
+                const geoStatus = await navigator.permissions.query({ name: 'geolocation' });
+                const camStatus = await navigator.permissions.query({ name: 'camera' });
+
+                // Jika salah satu belum diizinkan (masih 'prompt'), tampilkan modal kita
+                if (geoStatus.state === 'prompt' || camStatus.state === 'prompt') {
+                    onboardingModal.classList.remove('hidden');
+                    setTimeout(() => {
+                        onboardingModal.classList.remove('opacity-0');
+                        box.classList.remove('scale-95');
+                        box.classList.add('scale-100');
+                    }, 50);
+                }
+            } catch (error) {
+                // Fallback untuk browser lama yang tidak dukung navigator.permissions
+                console.warn("Pengecekan perizinan awal dilewati.");
+            }
+        }
+
+        function requestBrowserPermissions() {
+            // 1. Pancing pop-up Lokasi
+            navigator.geolocation.getCurrentPosition(
+                () => { console.log("Lokasi diizinkan"); },
+                () => { console.warn("Lokasi ditolak"); }
+            );
+
+            // 2. Pancing pop-up Kamera, lalu langsung matikan kameranya agar tidak menyala terus
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    stream.getTracks().forEach(track => track.stop()); 
+                    
+                    // Sembunyikan modal kita dengan animasi
+                    const onboardingModal = document.getElementById('permission-onboarding');
+                    onboardingModal.classList.add('opacity-0');
+                    setTimeout(() => onboardingModal.classList.add('hidden'), 500);
+                })
+                .catch(err => {
+                    alert("Sistem tidak bisa bekerja maksimal tanpa izin kamera & lokasi.");
+                });
+        }
+
+        // Jalankan saat halaman pertama kali dibuka
+        window.addEventListener('DOMContentLoaded', checkAndShowPermissions);
+    </script>
+</body>
+</html>
