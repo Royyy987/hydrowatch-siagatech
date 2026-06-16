@@ -18,6 +18,9 @@ COPY . .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
+RUN ls -la static/img/ || echo "FOLDER STATIC HILANG!"
+
+# Eksekusi collectstatic
 RUN python manage.py collectstatic --noinput --clear
 
 CMD gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
