@@ -24,4 +24,4 @@ RUN python manage.py collectstatic --noinput
 
 # Jalankan server produksi
 EXPOSE 7860
-CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--chdir", ".", "core.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--workers", "1", "--timeout", "120", "--log-level", "debug", "core.wsgi:application"]
