@@ -12,7 +12,8 @@ if os.name == 'nt':
     GDAL_LIBRARY_PATH = r'D:\PostgreSQL\bin\libgdal-35.dll'
     GEOS_LIBRARY_PATH = r'D:\PostgreSQL\bin\libgeos_c.dll'
 
-load_dotenv()
+if os.getenv("RAILWAY_ENVIRONMENT") is None:
+    load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,9 +89,13 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+database_url = os.getenv("DATABASE_URL")
+
+print("DATABASE_URL:", repr(database_url))
+
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DATABASE_URL"),
+        database_url,
         engine="django.contrib.gis.db.backends.postgis",
         conn_max_age=600
     )
