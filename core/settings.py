@@ -21,9 +21,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(tdg7gu+zvtqlt&l8q^(_aiu=#8vi944l)f00hkgtimg4z1wf0')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 
 # Application definition
@@ -89,9 +89,9 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgis://postgres.bkrwdbfnvdykgmygqknm:HydroWatch2026!@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
-        engine='django.contrib.gis.db.backends.postgis',
+    "default": dj_database_url.parse(
+        os.getenv("DATABASE_URL"),
+        engine="django.contrib.gis.db.backends.postgis",
         conn_max_age=600
     )
 }
