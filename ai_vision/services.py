@@ -8,6 +8,7 @@ load_dotenv()
 # Inisialisasi client dari SDK google-genai
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def estimate_flood_depth(image_path):
     try:
         img = Image.open(image_path)
