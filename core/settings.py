@@ -162,7 +162,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv('dyaztalob'),
     'API_KEY': os.getenv('827281677895194'),
-    'API_SECRET': os.getenv('MkSpuGNdwUnFLgdRL5fYtYJPuFQ')
+    'API_SECRET': os.getenv('MkSpuGNdwUnFLgdRL5fYtYJPuFQ'),
+    'SECURE': True,
 }
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
