@@ -1,4 +1,5 @@
 import os
+import io
 from google import genai
 from PIL import Image
 from dotenv import load_dotenv
@@ -8,7 +9,6 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # 1. FUNGSI HELPER: Khusus menembak API dan di-backup oleh auto-retry
-# Jika Google sibuk (503), fungsi ini akan otomatis mengulang maksimal 3x
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_ai_vision(prompt, img):
     return client.models.generate_content(
@@ -17,9 +17,13 @@ def fetch_ai_vision(prompt, img):
     )
 
 # 2. FUNGSI UTAMA: Pemrosesan gambar dan logika kedalaman
-def estimate_flood_depth(image_path):
+def estimate_flood_depth(image_file):
     try:
-        img = Image.open(image_path)
+        # BACA LANGSUNG DARI RAM: Ubah file Django menjadi wujud Byte, 
+        # lalu corongkan ke dalam PIL Image. Dijamin 100% anti crash!
+        img_bytes = image_file.read()
+        img = Image.open(io.BytesIO(img_bytes))
+        
         if img.mode != "RGB":
             img = img.convert("RGB")
         img.thumbnail((800, 800))
@@ -33,7 +37,7 @@ def estimate_flood_depth(image_path):
         3. Jika gambar adalah foto wajah, dalam ruangan, atau TIDAK ada unsur jalanan sama sekali, jawab dengan teks: SPAM
         """
 
-        # Panggil fungsi helper yang sudah dilindungi auto-retry di atas
+        # Panggil fungsi helper
         response = fetch_ai_vision(prompt, img)
 
         response_text = response.text.strip().upper()
@@ -52,7 +56,5 @@ def estimate_flood_depth(image_path):
         return None
 
     except Exception as e:
-        # Jika setelah 3x percobaan Google tetap sibuk, tangkap errornya di sini
-        # sehingga website tidak crash dan Django akan merespons "Gagal memproses gambar"
         print(f"Error AI: {e}")
         return None
