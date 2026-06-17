@@ -153,11 +153,20 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+STORAGES = {
+    # Pengaturan untuk Media/Foto Upload (Dialirkan ke Cloudinary)
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    # Pengaturan untuk File Statis/CSS/Logo (Dialirkan ke WhiteNoise)
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
-
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
@@ -173,7 +182,6 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
     'SECURE': True,
 }
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # --- KONFIGURASI ALLAUTH & GOOGLE ---
 AUTHENTICATION_BACKENDS = [
