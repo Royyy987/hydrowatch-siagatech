@@ -270,11 +270,12 @@
         </div>
 
         <div id="ai-chat-widget" class="absolute bottom-6 left-4 right-20 md:bottom-10 md:left-10 md:right-auto z-20 w-[calc(100vw-6rem)] md:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-blue-100 dark:border-gray-700 overflow-hidden flex flex-col transition-all">
-            <div class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 md:py-4 flex justify-between items-center cursor-pointer transition-colors" onclick="toggleChat()">
+            <div class="bg-gray-500 text-gray-200 px-5 py-3 md:py-4 flex justify-between items-center cursor-not-allowed transition-colors" title="Fitur sedang dalam pemeliharaan">
                 <div class="font-bold flex items-center gap-2 text-xs md:text-sm">
-                    <i class="fa-solid fa-robot"></i> AI Navigator
+                    <i class="fa-solid fa-robot"></i> AI Navigator 
+                    <span class="bg-gray-700 text-white text-[9px] px-2 py-0.5 rounded-full ml-1 tracking-wider uppercase">Coming Soon</span>
                 </div>
-                <i class="fa-solid fa-chevron-up text-xs md:text-sm" id="chat-toggle-icon"></i>
+                <i class="fa-solid fa-lock text-xs md:text-sm"></i>
             </div>
             
             <div id="chat-body" class="flex-col h-72 md:h-80 hidden">
