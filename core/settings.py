@@ -32,14 +32,17 @@ ALLOWED_HOSTS = os.getenv(
 # Application definition
 
 INSTALLED_APPS = [
-    'cloudinary_storage',
-    'cloudinary',
+    # 1. Bawaan Django WAJIB berada di urutan paling atas
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # 2. Cloudinary pindah ke sini (Di bawah staticfiles)
+    'cloudinary_storage',
+    'cloudinary',
     'django.contrib.gis',
     
     # --- Allauth ---
