@@ -29,32 +29,32 @@ def submit_report(request):
         if image_file and latitude and longitude:
             location = Point(float(longitude), float(latitude), srid=4326)
 
-            # Simpan sementara
-            report = FloodReport.objects.create(
-                reporter=request.user,
-                image=image_file,
-                location=location
-            )
+            # 1. PENTING: Baca gambar langsung dari RAM, jangan pakai path!
+            image_file.seek(0)
+            
+            # 2. Tembak AI menggunakan file mentah dari memori
+            estimated_depth = estimate_flood_depth(image_file)
 
-            # Tembak AI
-            estimated_depth = estimate_flood_depth(report.image.path)
+            # 3. Kembalikan kursor file ke awal agar tidak "kosong" saat dikirim ke Cloudinary
+            image_file.seek(0)
 
             if estimated_depth is not None:
                 if estimated_depth > 0:
-                    report.estimated_depth_cm = estimated_depth
-                    report.save()
+                    # 4. BARU SIMPAN KE DATABASE & CLOUDINARY JIKA VALID BANJIR
+                    report = FloodReport.objects.create(
+                        reporter=request.user,
+                        image=image_file,
+                        location=location,
+                        estimated_depth_cm=estimated_depth
+                    )
                     messages.success(request, f"Validasi AI Berhasil: Kedalaman {estimated_depth} cm.")
                 else:
-                    # HAPUS LAPORAN KARENA SPAM/KERING
-                    report.delete()
-                    
                     if estimated_depth == -1:
                         # LOGIKA 3 STRIKES SUSPEND
                         spam_count = request.session.get('spam_count', 0) + 1
                         request.session['spam_count'] = spam_count
                         
                         if spam_count >= 3:
-                            # Suspend selama 1 jam
                             suspend_time = timezone.now() + timedelta(hours=1)
                             request.session['suspended_until'] = suspend_time.isoformat()
                             messages.error(request, "AKUN DIBEKUKAN SEMENTARA! Anda telah 3 kali mengirim gambar SPAM.")
@@ -63,9 +63,7 @@ def submit_report(request):
                     else:
                         messages.warning(request, "Laporan dibatalkan. AI mendeteksi jalanan kering.")
             else:
-                report.delete()
                 messages.error(request, "Gagal memproses gambar ke AI.")
 
-            return redirect('dashboard')
-
-    return render(request, 'reports/submit.html')
+    # FIX: Hapus render submit.html yang bikin bingung, ganti jadi redirect ke dashboard!
+    return redirect('dashboard')
