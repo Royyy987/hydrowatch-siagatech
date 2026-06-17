@@ -213,7 +213,7 @@
                     </p>
                 </div>
 
-                <form action="/reports/submit/" method="POST" enctype="multipart/form-data">
+                <form action="/reports/submit/" method="POST" enctype="multipart/form-data" onsubmit="lockSubmitBtn()">
                     {% csrf_token %}
                     <input type="hidden" id="latitude" name="latitude">
                     <input type="hidden" id="longitude" name="longitude">
@@ -818,6 +818,17 @@
 
         // Jalankan saat halaman pertama kali dibuka
         window.addEventListener('DOMContentLoaded', checkAndShowPermissions);
+    </script>
+
+    <script>
+    // FUNGSI MENGUNCI TOMBOL SAAT AI LOADING
+    function lockSubmitBtn() {
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        btn.classList.add('bg-gray-500');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses AI...';
+        }
     </script>
 </body>
 </html>
