@@ -1,6 +1,7 @@
 import os
 import io
 from google import genai
+from google.genai import types 
 from PIL import Image
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -8,25 +9,32 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# 1. FUNGSI HELPER: Khusus menembak API dan di-backup oleh auto-retry
+# 1. FUNGSI HELPER: Khusus menembak API
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def fetch_ai_vision(prompt, img):
+def fetch_ai_vision(prompt, image_bytes):
     return client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=[prompt, img]
+        model='gemini-2.5-flash', 
+        contents=[
+            prompt, 
+            types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg') # Paksa format JPEG
+        ]
     )
 
 # 2. FUNGSI UTAMA: Pemrosesan gambar dan logika kedalaman
 def estimate_flood_depth(image_file):
     try:
-        # BACA LANGSUNG DARI RAM: Ubah file Django menjadi wujud Byte, 
-        # lalu corongkan ke dalam PIL Image. Dijamin 100% anti crash!
+        # Sedot gambar dari RAM
         img_bytes = image_file.read()
         img = Image.open(io.BytesIO(img_bytes))
         
         if img.mode != "RGB":
             img = img.convert("RGB")
         img.thumbnail((800, 800))
+
+        # KUNCI ANTI-ERROR: Bungkus ulang gambar yang sudah diedit ke memori baru sebagai JPEG murni
+        output_buffer = io.BytesIO()
+        img.save(output_buffer, format="JPEG")
+        processed_image_bytes = output_buffer.getvalue()
 
         prompt = """
         Kamu adalah sistem analisis mitigasi bencana. Analisis gambar ini.
@@ -37,8 +45,8 @@ def estimate_flood_depth(image_file):
         3. Jika gambar adalah foto wajah, dalam ruangan, atau TIDAK ada unsur jalanan sama sekali, jawab dengan teks: SPAM
         """
 
-        # Panggil fungsi helper
-        response = fetch_ai_vision(prompt, img)
+        # Tembak AI menggunakan raw bytes yang formatnya sudah pasti terbaca
+        response = fetch_ai_vision(prompt, processed_image_bytes)
 
         response_text = response.text.strip().upper()
 
