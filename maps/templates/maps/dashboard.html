@@ -421,32 +421,29 @@
                     return null; 
                 }
             }).on('routesfound', function(e) {
-                // --- SENSOR RADAR ANTI-BANJIR (TURF.JS) ---
                 if (!globalFloodData) return;
 
                 let routes = e.routes;
                 let route = routes[0];
                 
-                // Ubah garis rute Leaflet menjadi wujud Garis Turf.js agar bisa dihitung
+                // Ubah garis rute ke format Turf.js
                 let routeLine = turf.lineString(route.coordinates.map(c => [c.lng, c.lat]));
 
                 let isDanger = false;
                 let dangerDepth = 0;
 
-                // Pindai seluruh titik banjir di Samarinda
                 turf.featureEach(globalFloodData, function (feature) {
                     let depth = feature.properties.kedalaman;
 
-                    // Sensor hanya menyala jika kedalaman air di atas 20cm (Bahaya)
+                    // Sensor menyala untuk kedalaman air >= 20cm
                     if (depth >= 20) {
                         let dangerZone = feature;
                         
-                        // Buat radius area bahaya sebesar 50 meter dari titik banjir
                         if (feature.geometry.type === 'Point') {
-                            dangerZone = turf.buffer(feature, 0.05, {units: 'kilometers'});
+                            dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
                         }
 
-                        // CEK TABRAKAN: Apakah Garis Rute menyentuh Area Radius Banjir?
+                        // Cek Tabrakan Rute vs Radius Banjir
                         if (turf.booleanIntersects(routeLine, dangerZone)) {
                             isDanger = true;
                             if (depth > dangerDepth) dangerDepth = depth;
@@ -454,30 +451,40 @@
                     }
                 });
 
-                // JIKA TERDETEKSI MENABRAK BANJIR
-                if (isDanger) {
-                    // Ubah visual rute menjadi Merah dan Putus-putus
-                    document.querySelectorAll('.leaflet-routing-line').forEach(el => {
-                        el.style.stroke = '#ef4444'; // Warna Merah
-                        el.style.strokeDasharray = '10, 10';
-                    });
-                    
-                    // Nyalakan UI Peringatan Merah
-                    updateAdaptiveWarning(dangerDepth);
-                    
-                    // Munculkan peringatan agar user mencari jalan lain
-                    setTimeout(() => {
-                        alert("⚠️ RUTE BERBAHAYA!\nJalur ini melewati genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Harap ketuk jalan aspal lain untuk mencari rute memutar yang aman.");
-                    }, 600);
-                    
-                } else {
-                    // JIKA AMAN: Kembalikan rute ke warna Biru
-                    document.querySelectorAll('.leaflet-routing-line').forEach(el => {
-                        el.style.stroke = '#3b82f6';
-                        el.style.strokeDasharray = 'none';
-                    });
-                    updateAdaptiveWarning(0); // Set status UI ke Aman
-                }
+                setTimeout(() => {
+                    if (isDanger) {
+                        // Suntik gaya langsung ke "urat nadi" Leaflet
+                        if (routingControl._line) {
+                            routingControl._line.setStyle({
+                                color: '#ef4444', 
+                                dashArray: '10, 10', 
+                                weight: 6
+                            });
+                        }
+                        
+                        // Fallback pertahanan ganda: Ubah elemen SVG yang berwarna biru
+                        document.querySelectorAll('path[stroke="#3b82f6"]').forEach(el => {
+                            el.setAttribute('stroke', '#ef4444');
+                            el.setAttribute('stroke-dasharray', '10, 10');
+                        });
+                        
+                        // Nyalakan UI Peringatan Merah & Munculkan Pop-Up
+                        updateAdaptiveWarning(dangerDepth);
+                        alert("⚠️ RUTE BERBAHAYA!\nJalur ini memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Silakan ketuk jalan aspal lain untuk mencari rute alternatif!");
+                        
+                    } else {
+                        // JIKA AMAN: Kembalikan rute ke warna Biru
+                        if (routingControl._line) {
+                            routingControl._line.setStyle({
+                                color: '#3b82f6', 
+                                dashArray: 'none', 
+                                weight: 6
+                            });
+                        }
+                        updateAdaptiveWarning(0); // Set status UI ke Aman
+                    }
+                }, 200);
+
             }).addTo(map);
         });
 
