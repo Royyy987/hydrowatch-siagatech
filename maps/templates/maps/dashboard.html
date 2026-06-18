@@ -404,7 +404,7 @@
                 addWaypoints: false,
                 show: false, 
                 lineOptions: {
-                    styles: [{ opacity: 0 }] // Trik agar garis asli tersembunyi
+                    styles: [{ opacity: 0 }] 
                 },
                 createMarker: function(i, waypoint, n) {
                     if (i === 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
@@ -417,36 +417,45 @@
                 let isDanger = false;
                 let dangerDepth = 0;
 
-                // --- RADAR TURF.JS (AKURASI TINGGI) ---
+                // --- LOGIKA "REMAH ROTI" (AKURASI MUTLAK 100%) ---
                 if (globalFloodData && globalFloodData.features) {
-                    // Konversi rute Leaflet menjadi Garis (LineString) Turf.js
+                    // 1. Jadikan rute sebagai garis utuh
                     let routeLine = turf.lineString(coords.map(c => [c.lng, c.lat]));
+                    // 2. Hitung panjang total jalan dalam kilometer
+                    let routeLength = turf.length(routeLine, {units: 'kilometers'});
 
-                    turf.featureEach(globalFloodData, function(feature) {
-                        let depth = feature.properties.kedalaman;
-                        
-                        if (depth >= 20) {
-                            let dangerZone = feature;
+                    // 3. Taburkan titik pengecekan setiap 10 meter (0.01 km)
+                    for (let i = 0; i <= routeLength; i += 0.01) {
+                        let checkpoint = turf.along(routeLine, i, {units: 'kilometers'});
+
+                        // Cek apakah "remah roti" ini tenggelam di zona banjir
+                        turf.featureEach(globalFloodData, function(feature) {
+                            let depth = feature.properties.kedalaman;
                             
-                            // Ubah titik koordinat genangan menjadi Area Lingkaran (Radius 150m)
-                            if (feature.geometry.type === 'Point') {
-                                dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
-                            }
+                            if (depth >= 20) {
+                                let dangerZone = feature;
+                                
+                                if (feature.geometry.type === 'Point') {
+                                    dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
+                                }
 
-                            // CEK TABRAKAN: Apakah ada bagian dari garis rute yang masuk ke lingkaran?
-                            if (turf.booleanIntersects(routeLine, dangerZone)) {
-                                isDanger = true;
-                                if (depth > dangerDepth) dangerDepth = depth;
+                                // Cek mutlak: Titik VS Area
+                                if (turf.booleanPointInPolygon(checkpoint, dangerZone)) {
+                                    isDanger = true;
+                                    if (depth > dangerDepth) dangerDepth = depth;
+                                }
                             }
-                        }
-                    });
+                        });
+
+                        // Optimasi: Kalau satu titik aja udah kena air, langsung setop looping!
+                        if (isDanger) break;
+                    }
                 }
 
                 if (customRouteLine) map.removeLayer(customRouteLine);
 
-                // --- VISUALISASI RUTE KUSTOM ---
+                // --- VISUALISASI ---
                 if (isDanger) {
-                    // GARIS MERAH PUTUS-PUTUS
                     customRouteLine = L.polyline(coords, {
                         color: '#ef4444', 
                         weight: 6,
@@ -459,7 +468,6 @@
                         alert("⚠️ RUTE BERBAHAYA!\nJalur memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Ketuk jalan aspal lain!");
                     }, 100);
                 } else {
-                    // GARIS BIRU AMAN
                     customRouteLine = L.polyline(coords, {
                         color: '#3b82f6', 
                         weight: 6
