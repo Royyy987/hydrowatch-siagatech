@@ -358,15 +358,15 @@
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // VARIABEL GLOBAL UNTUK ROUTING
         let userLocation = null;
         let routingControl = null;
+        let customRouteLine = null; // KUNCI UTAMA: Penampung garis kustom kita
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
                 const userLat = position.coords.latitude;
                 const userLng = position.coords.longitude;
-                userLocation = L.latLng(userLat, userLng); // Simpan lokasi ke variabel
+                userLocation = L.latLng(userLat, userLng);
                 
                 map.flyTo(userLocation, 16, { animate: true, duration: 1.5 });
 
@@ -375,13 +375,12 @@
                     .openPopup();
                     
             }, function(error) {
-                console.warn("Akses lokasi ditolak atau gagal. Peta tetap di default Samarinda.");
+                console.warn("Akses lokasi ditolak atau gagal.");
             });
         }
 
-        // EVENT SAAT PETA DI-TAP/KLIK
         map.on('click', function(e) {
-            // 1. Hilangkan animasi alert sebelumnya (Kode lama)
+            // Bersihkan UI sebelumnya
             const container = document.getElementById('alert-container');
             const depthText = document.getElementById('depth-text');
             const waterLevel = document.getElementById('water-level');
@@ -392,135 +391,82 @@
             depthText.innerText = "0 cm";
             waterLevel.style.height = "0%";
 
-            // 2. LOGIKA BARU: BUAT RUTE NAVIGASI
             if (!userLocation) {
                 alert("Tunggu sampai sistem mengunci lokasi GPS-mu terlebih dahulu.");
                 return;
             }
 
-            // Jika sudah ada garis rute sebelumnya, hapus bersihkan
-            if (routingControl) {
-                map.removeControl(routingControl);
-            }
+            // Hapus mesin rute dan garis kustom lama jika ada
+            if (routingControl) map.removeControl(routingControl);
+            if (customRouteLine) map.removeLayer(customRouteLine);
 
-            // Gambar garis rute biru dari GPS User ke Titik yang diklik
             routingControl = L.Routing.control({
-                waypoints: [
-                    userLocation, 
-                    e.latlng      // Titik tujuan (klik)
-                ],
+                waypoints: [userLocation, e.latlng],
                 routeWhileDragging: false,
-                addWaypoints: false, 
+                addWaypoints: false,
+                show: false, // Matikan otomatis kotak teks panduan
                 lineOptions: {
-                    styles: [{ color: '#3b82f6', opacity: 0.8, weight: 6 }] 
+                    styles: [{ opacity: 0 }] // Trik Mutlak: Sembunyikan garis bawaan mesin!
                 },
                 createMarker: function(i, waypoint, n) {
-                    if (i === 1) {
-                        return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
-                    }
+                    if (i === 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
                     return null; 
                 }
             }).on('routesfound', function(e) {
                 if (!globalFloodData) return;
 
-                let routes = e.routes;
-                let route = routes[0];
-                
-                // Ubah garis rute ke format Turf.js
-                let routeLine = turf.lineString(route.coordinates.map(c => [c.lng, c.lat]));
+                let route = e.routes[0];
+                let coords = route.coordinates; 
 
                 let isDanger = false;
                 let dangerDepth = 0;
 
+                // Ubah rute menjadi sekumpulan titik (seperti remah roti)
+                let routePoints = turf.points(coords.map(c => [c.lng, c.lat]));
+
                 turf.featureEach(globalFloodData, function (feature) {
                     let depth = feature.properties.kedalaman;
-
-                    // Sensor menyala untuk kedalaman air >= 20cm
+                    
                     if (depth >= 20) {
                         let dangerZone = feature;
-                        
                         if (feature.geometry.type === 'Point') {
                             dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
                         }
 
-                        // Cek Tabrakan Rute vs Radius Banjir
-                        if (turf.booleanIntersects(routeLine, dangerZone)) {
-                            isDanger = true;
-                            if (depth > dangerDepth) dangerDepth = depth;
+                        // Cek apakah ada "remah roti" rute yang jatuh di dalam zona genangan
+                        try {
+                            let ptsWithin = turf.pointsWithinPolygon(routePoints, dangerZone);
+                            if (ptsWithin.features.length > 0) {
+                                isDanger = true;
+                                if (depth > dangerDepth) dangerDepth = depth;
+                            }
+                        } catch (err) {
+                            console.error("Gagal mendeteksi koordinat:", err);
                         }
                     }
                 });
 
-                setTimeout(() => {
-                    if (isDanger) {
-                        // Suntik gaya langsung ke "urat nadi" Leaflet
-                        if (routingControl._line) {
-                            routingControl._line.setStyle({
-                                color: '#ef4444', 
-                                dashArray: '10, 10', 
-                                weight: 6
-                            });
-                        }
-                        
-                        // Fallback pertahanan ganda: Ubah elemen SVG yang berwarna biru
-                        document.querySelectorAll('path[stroke="#3b82f6"]').forEach(el => {
-                            el.setAttribute('stroke', '#ef4444');
-                            el.setAttribute('stroke-dasharray', '10, 10');
-                        });
-                        
-                        // Nyalakan UI Peringatan Merah & Munculkan Pop-Up
-                        updateAdaptiveWarning(dangerDepth);
-                        alert("⚠️ RUTE BERBAHAYA!\nJalur ini memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Silakan ketuk jalan aspal lain untuk mencari rute alternatif!");
-                        
-                    } else {
-                        // JIKA AMAN: Kembalikan rute ke warna Biru
-                        if (routingControl._line) {
-                            routingControl._line.setStyle({
-                                color: '#3b82f6', 
-                                dashArray: 'none', 
-                                weight: 6
-                            });
-                        }
-                        updateAdaptiveWarning(0); // Set status UI ke Aman
-                    }
-                }, 200);
+                // KITA YANG GAMBAR SENDIRI GARISNYA
+                if (isDanger) {
+                    // Gambar Garis Merah
+                    customRouteLine = L.polyline(coords, {
+                        color: '#ef4444', 
+                        weight: 6,
+                        dashArray: '10, 10'
+                    }).addTo(map);
 
-            }).addTo(map);
-        });
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const userLat = position.coords.latitude;
-                const userLng = position.coords.longitude;
-                
-                map.flyTo([userLat, userLng], 16, {
-                    animate: true,
-                    duration: 1.5 
-                });
-
-                L.marker([userLat, userLng]).addTo(map)
-                    .bindPopup('<div class="text-xs font-bold text-center">Lokasi Kamu Sekarang</div>')
-                    .openPopup();
+                    updateAdaptiveWarning(dangerDepth);
+                    alert("⚠️ RUTE BERBAHAYA!\nJalur memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Ketuk jalan aspal lain!");
+                } else {
+                    // Gambar Garis Biru
+                    customRouteLine = L.polyline(coords, {
+                        color: '#3b82f6', 
+                        weight: 6
+                    }).addTo(map);
                     
-            }, function(error) {
-                console.warn("Akses lokasi ditolak atau gagal. Peta tetap di default Samarinda.");
-            });
-        }
-
-        map.on('click', function() {
-            const container = document.getElementById('alert-container');
-            const depthText = document.getElementById('depth-text');
-            const waterLevel = document.getElementById('water-level');
-
-            container.classList.remove('opacity-100');
-            container.classList.add('opacity-0');
-            
-            setTimeout(() => {
-                container.classList.add('hidden');
-            }, 300); 
-
-            depthText.innerText = "0 cm";
-            waterLevel.style.height = "0%";
+                    updateAdaptiveWarning(0);
+                }
+            }).addTo(map);
         });
 
         let floodLayer; 
