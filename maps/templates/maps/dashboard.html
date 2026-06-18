@@ -50,6 +50,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 </head>
 <body class="flex h-[100dvh] w-screen overflow-hidden overscroll-none bg-gray-100 dark:bg-gray-900 transition-colors duration-300 relative">
 
@@ -409,16 +410,73 @@
                     e.latlng      // Titik tujuan (klik)
                 ],
                 routeWhileDragging: false,
-                addWaypoints: false, // Jangan biarkan user menambah titik tengah sembarangan
+                addWaypoints: false, 
                 lineOptions: {
-                    styles: [{ color: '#3b82f6', opacity: 0.8, weight: 6 }] // Warna biru ala Google Maps
+                    styles: [{ color: '#3b82f6', opacity: 0.8, weight: 6 }] 
                 },
                 createMarker: function(i, waypoint, n) {
-                    // Hanya pasang pin/marker di titik tujuan (i == 1)
                     if (i === 1) {
                         return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
                     }
-                    return null; // Sembunyikan pin di lokasi awal
+                    return null; 
+                }
+            }).on('routesfound', function(e) {
+                // --- SENSOR RADAR ANTI-BANJIR (TURF.JS) ---
+                if (!globalFloodData) return;
+
+                let routes = e.routes;
+                let route = routes[0];
+                
+                // Ubah garis rute Leaflet menjadi wujud Garis Turf.js agar bisa dihitung
+                let routeLine = turf.lineString(route.coordinates.map(c => [c.lng, c.lat]));
+
+                let isDanger = false;
+                let dangerDepth = 0;
+
+                // Pindai seluruh titik banjir di Samarinda
+                turf.featureEach(globalFloodData, function (feature) {
+                    let depth = feature.properties.kedalaman;
+
+                    // Sensor hanya menyala jika kedalaman air di atas 20cm (Bahaya)
+                    if (depth >= 20) {
+                        let dangerZone = feature;
+                        
+                        // Buat radius area bahaya sebesar 50 meter dari titik banjir
+                        if (feature.geometry.type === 'Point') {
+                            dangerZone = turf.buffer(feature, 0.05, {units: 'kilometers'});
+                        }
+
+                        // CEK TABRAKAN: Apakah Garis Rute menyentuh Area Radius Banjir?
+                        if (turf.booleanIntersects(routeLine, dangerZone)) {
+                            isDanger = true;
+                            if (depth > dangerDepth) dangerDepth = depth;
+                        }
+                    }
+                });
+
+                // JIKA TERDETEKSI MENABRAK BANJIR
+                if (isDanger) {
+                    // Ubah visual rute menjadi Merah dan Putus-putus
+                    document.querySelectorAll('.leaflet-routing-line').forEach(el => {
+                        el.style.stroke = '#ef4444'; // Warna Merah
+                        el.style.strokeDasharray = '10, 10';
+                    });
+                    
+                    // Nyalakan UI Peringatan Merah
+                    updateAdaptiveWarning(dangerDepth);
+                    
+                    // Munculkan peringatan agar user mencari jalan lain
+                    setTimeout(() => {
+                        alert("⚠️ RUTE BERBAHAYA!\nJalur ini melewati genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Harap ketuk jalan aspal lain untuk mencari rute memutar yang aman.");
+                    }, 600);
+                    
+                } else {
+                    // JIKA AMAN: Kembalikan rute ke warna Biru
+                    document.querySelectorAll('.leaflet-routing-line').forEach(el => {
+                        el.style.stroke = '#3b82f6';
+                        el.style.strokeDasharray = 'none';
+                    });
+                    updateAdaptiveWarning(0); // Set status UI ke Aman
                 }
             }).addTo(map);
         });
@@ -459,6 +517,7 @@
         });
 
         let floodLayer; 
+        let globalFloodData = null;
 
         function loadFloodData() {
             fetch('/api/flood-data/')
