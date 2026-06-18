@@ -345,7 +345,7 @@
     </script>
 
     <script>
-        // 2. MANAGEMENT INFRASTRUKTUR GEOSPASIAL
+       // 2. MANAGEMENT INFRASTRUKTUR GEOSPASIAL
         const map = L.map('map', {
             zoomControl: false,
             attributionControl: false 
@@ -395,83 +395,107 @@
                 waypoints: [userLocation, e.latlng],
                 routeWhileDragging: false,
                 addWaypoints: false,
+                alternatives: true, // <--- KUNCI UTAMA: Minta server carikan rute-rute alternatif!
                 show: false, 
                 lineOptions: {
-                    styles: [{ color: 'transparent', weight: 0 }] // MURNI HILANGKAN GARIS DEFAULT
+                    styles: [{ color: 'transparent', weight: 0 }] 
                 },
                 createMarker: function(i, waypoint, n) {
                     if (i === 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
                     return null; 
                 }
             }).on('routesfound', function(e) {
-                let coords = e.routes[0].coordinates; 
+                let routes = e.routes; // Berisi kumpulan alternatif rute dari OSRM
                 
-                // --- 1. TEKNIK REMAH ROTI (INTERPOLASI 10 METER) ---
-                let breadcrumbs = [];
-                for (let i = 0; i < coords.length - 1; i++) {
-                    let start = coords[i];
-                    let end = coords[i+1];
-                    breadcrumbs.push(start);
-                    
-                    let dist = start.distanceTo(end);
-                    if (dist > 10) { 
-                        let steps = Math.floor(dist / 10);
-                        let latDiff = (end.lat - start.lat) / steps;
-                        let lngDiff = (end.lng - start.lng) / steps;
-                        for (let j = 1; j < steps; j++) {
-                            breadcrumbs.push(L.latLng(start.lat + (latDiff * j), start.lng + (lngDiff * j)));
+                let selectedRoute = null;
+                let selectedCoords = null;
+                let selectedRouteIsDanger = true;
+                let absoluteDangerDepth = Infinity;
+
+                // PINDAI SEMUA PILIHAN RUTE YANG TERSEDIA
+                for (let r = 0; r < routes.length; r++) {
+                    let coords = routes[r].coordinates;
+                    let isThisRouteDanger = false;
+                    let thisRouteMaxDepth = 0;
+
+                    // Buat remah roti interpolasi 10 meter untuk rute alternatif ini
+                    let breadcrumbs = [];
+                    for (let i = 0; i < coords.length - 1; i++) {
+                        let start = coords[i];
+                        let end = coords[i+1];
+                        breadcrumbs.push(start);
+                        let dist = start.distanceTo(end);
+                        if (dist > 10) {
+                            let steps = Math.floor(dist / 10);
+                            let latDiff = (end.lat - start.lat) / steps;
+                            let lngDiff = (end.lng - start.lng) / steps;
+                            for (let j = 1; j < steps; j++) {
+                                breadcrumbs.push(L.latLng(start.lat + (latDiff * j), start.lng + (lngDiff * j)));
+                            }
                         }
                     }
-                }
-                breadcrumbs.push(coords[coords.length - 1]);
+                    breadcrumbs.push(coords[coords.length - 1]);
 
-                let isDanger = false;
-                let dangerDepth = 0;
+                    // Cek tabrakan rute alternatif ini dengan data banjir
+                    if (globalFloodData && globalFloodData.features) {
+                        globalFloodData.features.forEach(function(feature) {
+                            let depth = feature.properties.kedalaman;
+                            if (depth >= 20) {
+                                let centerLatLng;
+                                if (feature.geometry.type === 'Point') {
+                                    centerLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                                } else {
+                                    let polyCoords = feature.geometry.coordinates;
+                                    while(Array.isArray(polyCoords[0])) polyCoords = polyCoords[0];
+                                    centerLatLng = L.latLng(polyCoords[1], polyCoords[0]); 
+                                }
 
-                // --- 2. RADAR NATIVE LEAFLET (ANTI BUG) ---
-                if (globalFloodData && globalFloodData.features) {
-                    globalFloodData.features.forEach(function(feature) {
-                        let depth = feature.properties.kedalaman;
-                        
-                        if (depth >= 20) {
-                            let centerLatLng;
-                            if (feature.geometry.type === 'Point') {
-                                centerLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
-                            } else {
-                                // Ekstrak titik tengah amankan semua jenis bentuk (Polygon)
-                                let polyCoords = feature.geometry.coordinates;
-                                while(Array.isArray(polyCoords[0])) polyCoords = polyCoords[0];
-                                centerLatLng = L.latLng(polyCoords[1], polyCoords[0]); 
-                            }
-
-                            // Cek jika ada remah roti yang masuk area 150m dari banjir
-                            for (let i = 0; i < breadcrumbs.length; i++) {
-                                if (breadcrumbs[i].distanceTo(centerLatLng) <= 150) {
-                                    isDanger = true;
-                                    if (depth > dangerDepth) dangerDepth = depth;
-                                    break; 
+                                for (let i = 0; i < breadcrumbs.length; i++) {
+                                    if (breadcrumbs[i].distanceTo(centerLatLng) <= 150) {
+                                        isThisRouteDanger = true;
+                                        if (depth > thisRouteMaxDepth) thisRouteMaxDepth = depth;
+                                        break;
+                                    }
                                 }
                             }
+                        });
+                    }
+
+                    // JALUR EMAS: Jika menemukan rute yang 100% BERSIH dari banjir, langsung kunci rute ini!
+                    if (!isThisRouteDanger) {
+                        selectedRoute = routes[r];
+                        selectedCoords = coords;
+                        selectedRouteIsDanger = false;
+                        absoluteDangerDepth = 0;
+                        break; // Stop pencarian, jalur terbaik ditemukan!
+                    } else {
+                        // Jika terpaksa banjir, cari rute alternatif yang genangannya paling dangkal
+                        if (thisRouteMaxDepth < absoluteDangerDepth) {
+                            absoluteDangerDepth = thisRouteMaxDepth;
+                            selectedRoute = routes[r];
+                            selectedCoords = coords;
                         }
-                    });
+                    }
                 }
 
                 if (customRouteLine) map.removeLayer(customRouteLine);
 
-                // --- 3. GAMBAR VISUAL FINAL ---
-                if (isDanger) {
-                    customRouteLine = L.polyline(coords, {
+                // --- 3. GAMBAR HASIL PILIHAN TERBAIK KE PETA ---
+                if (selectedRouteIsDanger) {
+                    // JIKA SEMUA ALTERNATIF TERPAKSA BANJIR: Warnai Merah Putus-putus (Tampilkan yang terdangkal)
+                    customRouteLine = L.polyline(selectedCoords, {
                         color: '#ef4444', 
                         weight: 6,
                         dashArray: '10, 10'
                     }).addTo(map);
 
-                    updateAdaptiveWarning(dangerDepth);
+                    updateAdaptiveWarning(absoluteDangerDepth);
                     setTimeout(() => {
-                        alert("⚠️ RUTE BERBAHAYA!\nJalur memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Ketuk jalan aspal lain!");
+                        alert("⚠️ PERINGATAN:\nSemua jalur alternatif melewati area banjir. Sistem otomatis mengarahkan ke rute terdangkal (" + absoluteDangerDepth + " cm). Harap berkendara lambat!");
                     }, 100);
                 } else {
-                    customRouteLine = L.polyline(coords, {
+                    // JIKA BERHASIL MENEMUKAN JALUR MEMUTAR YANG KERING: Warnai Biru Aman!
+                    customRouteLine = L.polyline(selectedCoords, {
                         color: '#3b82f6', 
                         weight: 6
                     }).addTo(map);
