@@ -360,7 +360,7 @@
 
         let userLocation = null;
         let routingControl = null;
-        let customRouteLine = null; // Penampung garis kustom kita
+        let customRouteLine = null; 
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
@@ -380,7 +380,6 @@
         }
 
         map.on('click', function(e) {
-            // Bersihkan UI alert sebelumnya
             const container = document.getElementById('alert-container');
             const depthText = document.getElementById('depth-text');
             const waterLevel = document.getElementById('water-level');
@@ -396,7 +395,6 @@
                 return;
             }
 
-            // Bersihkan rute lama sebelum membuat yang baru
             if (routingControl) map.removeControl(routingControl);
             if (customRouteLine) map.removeLayer(customRouteLine);
 
@@ -406,7 +404,7 @@
                 addWaypoints: false,
                 show: false, 
                 lineOptions: {
-                    styles: [{ opacity: 0 }] // Sembunyikan garis bawaan agar tidak tumpang tindih
+                    styles: [{ opacity: 0 }] // Trik agar garis asli tersembunyi
                 },
                 createMarker: function(i, waypoint, n) {
                     if (i === 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
@@ -414,58 +412,41 @@
                 }
             }).on('routesfound', function(e) {
                 let route = e.routes[0];
-                let coords = route.coordinates; // Array berisi objek L.LatLng koordinat jalan
+                let coords = route.coordinates; 
 
                 let isDanger = false;
                 let dangerDepth = 0;
 
-                // --- RADAR MILITER NATIVE (TANPA TURF.JS) ---
+                // --- RADAR TURF.JS (AKURASI TINGGI) ---
                 if (globalFloodData && globalFloodData.features) {
-                    globalFloodData.features.forEach(function(feature) {
+                    // Konversi rute Leaflet menjadi Garis (LineString) Turf.js
+                    let routeLine = turf.lineString(coords.map(c => [c.lng, c.lat]));
+
+                    turf.featureEach(globalFloodData, function(feature) {
                         let depth = feature.properties.kedalaman;
                         
-                        // Radar mendeteksi jika titik banjir punya kedalaman >= 20cm
-                        if (depth >= 20 && feature.geometry) {
-                            let geom = feature.geometry;
+                        if (depth >= 20) {
+                            let dangerZone = feature;
                             
-                            // Handler jika koordinat berupa Point
-                            if (geom.type === 'Point') {
-                                let floodLatLng = L.latLng(geom.coordinates[1], geom.coordinates[0]);
-                                
-                                // Cek menggunakan rumus matematika Leaflet distanceTo (Radius Aman 150 Meter)
-                                for (let i = 0; i < coords.length; i++) {
-                                    if (coords[i].distanceTo(floodLatLng) <= 150) { 
-                                        isDanger = true;
-                                        if (depth > dangerDepth) dangerDepth = depth;
-                                        break;
-                                    }
-                                }
-                            } 
-                            // Handler jika berupa Polygon/MultiPolygon
-                            else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
-                                let flatCoords = geom.coordinates.flat(geom.type === 'MultiPolygon' ? 2 : 1);
-                                for (let j = 0; j < flatCoords.length; j++) {
-                                    let floodLatLng = L.latLng(flatCoords[j][1], flatCoords[j][0]);
-                                    for (let i = 0; i < coords.length; i++) {
-                                        if (coords[i].distanceTo(floodLatLng) <= 150) {
-                                            isDanger = true;
-                                            if (depth > dangerDepth) dangerDepth = depth;
-                                            break;
-                                        }
-                                    }
-                                    if (isDanger) break;
-                                }
+                            // Ubah titik koordinat genangan menjadi Area Lingkaran (Radius 150m)
+                            if (feature.geometry.type === 'Point') {
+                                dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
+                            }
+
+                            // CEK TABRAKAN: Apakah ada bagian dari garis rute yang masuk ke lingkaran?
+                            if (turf.booleanIntersects(routeLine, dangerZone)) {
+                                isDanger = true;
+                                if (depth > dangerDepth) dangerDepth = depth;
                             }
                         }
                     });
                 }
 
-                // Hapus pengaman ganda jika garis kustom mendadak duplikat saat digeser
                 if (customRouteLine) map.removeLayer(customRouteLine);
 
-                // --- PROSES MENGGAMBAR GARIS KUSTOM ---
+                // --- VISUALISASI RUTE KUSTOM ---
                 if (isDanger) {
-                    // JIKA BAHAYA: Gambar Garis Merah Putus-putus
+                    // GARIS MERAH PUTUS-PUTUS
                     customRouteLine = L.polyline(coords, {
                         color: '#ef4444', 
                         weight: 6,
@@ -478,7 +459,7 @@
                         alert("⚠️ RUTE BERBAHAYA!\nJalur memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Ketuk jalan aspal lain!");
                     }, 100);
                 } else {
-                    // JIKA AMAN / DATA BELUM LOAD: Gambar Garis Biru Normal ala Google Maps
+                    // GARIS BIRU AMAN
                     customRouteLine = L.polyline(coords, {
                         color: '#3b82f6', 
                         weight: 6
