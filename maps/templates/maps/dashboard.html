@@ -364,16 +364,9 @@
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
-                const userLat = position.coords.latitude;
-                const userLng = position.coords.longitude;
-                userLocation = L.latLng(userLat, userLng);
-                
+                userLocation = L.latLng(position.coords.latitude, position.coords.longitude);
                 map.flyTo(userLocation, 16, { animate: true, duration: 1.5 });
-
-                L.marker(userLocation).addTo(map)
-                    .bindPopup('<div class="text-xs font-bold text-center">Lokasi Kamu Sekarang</div>')
-                    .openPopup();
-                    
+                L.marker(userLocation).addTo(map).bindPopup('<div class="text-xs font-bold text-center">Lokasi Kamu Sekarang</div>').openPopup();
             }, function(error) {
                 console.warn("Akses lokasi ditolak atau gagal.");
             });
@@ -404,57 +397,68 @@
                 addWaypoints: false,
                 show: false, 
                 lineOptions: {
-                    styles: [{ opacity: 0 }] 
+                    styles: [{ color: 'transparent', weight: 0 }] // MURNI HILANGKAN GARIS DEFAULT
                 },
                 createMarker: function(i, waypoint, n) {
                     if (i === 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
                     return null; 
                 }
             }).on('routesfound', function(e) {
-                let route = e.routes[0];
-                let coords = route.coordinates; 
+                let coords = e.routes[0].coordinates; 
+                
+                // --- 1. TEKNIK REMAH ROTI (INTERPOLASI 10 METER) ---
+                let breadcrumbs = [];
+                for (let i = 0; i < coords.length - 1; i++) {
+                    let start = coords[i];
+                    let end = coords[i+1];
+                    breadcrumbs.push(start);
+                    
+                    let dist = start.distanceTo(end);
+                    if (dist > 10) { 
+                        let steps = Math.floor(dist / 10);
+                        let latDiff = (end.lat - start.lat) / steps;
+                        let lngDiff = (end.lng - start.lng) / steps;
+                        for (let j = 1; j < steps; j++) {
+                            breadcrumbs.push(L.latLng(start.lat + (latDiff * j), start.lng + (lngDiff * j)));
+                        }
+                    }
+                }
+                breadcrumbs.push(coords[coords.length - 1]);
 
                 let isDanger = false;
                 let dangerDepth = 0;
 
-                // --- LOGIKA "REMAH ROTI" (AKURASI MUTLAK 100%) ---
+                // --- 2. RADAR NATIVE LEAFLET (ANTI BUG) ---
                 if (globalFloodData && globalFloodData.features) {
-                    // 1. Jadikan rute sebagai garis utuh
-                    let routeLine = turf.lineString(coords.map(c => [c.lng, c.lat]));
-                    // 2. Hitung panjang total jalan dalam kilometer
-                    let routeLength = turf.length(routeLine, {units: 'kilometers'});
+                    globalFloodData.features.forEach(function(feature) {
+                        let depth = feature.properties.kedalaman;
+                        
+                        if (depth >= 20) {
+                            let centerLatLng;
+                            if (feature.geometry.type === 'Point') {
+                                centerLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                            } else {
+                                // Ekstrak titik tengah amankan semua jenis bentuk (Polygon)
+                                let polyCoords = feature.geometry.coordinates;
+                                while(Array.isArray(polyCoords[0])) polyCoords = polyCoords[0];
+                                centerLatLng = L.latLng(polyCoords[1], polyCoords[0]); 
+                            }
 
-                    // 3. Taburkan titik pengecekan setiap 10 meter (0.01 km)
-                    for (let i = 0; i <= routeLength; i += 0.01) {
-                        let checkpoint = turf.along(routeLine, i, {units: 'kilometers'});
-
-                        // Cek apakah "remah roti" ini tenggelam di zona banjir
-                        turf.featureEach(globalFloodData, function(feature) {
-                            let depth = feature.properties.kedalaman;
-                            
-                            if (depth >= 20) {
-                                let dangerZone = feature;
-                                
-                                if (feature.geometry.type === 'Point') {
-                                    dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
-                                }
-
-                                // Cek mutlak: Titik VS Area
-                                if (turf.booleanPointInPolygon(checkpoint, dangerZone)) {
+                            // Cek jika ada remah roti yang masuk area 150m dari banjir
+                            for (let i = 0; i < breadcrumbs.length; i++) {
+                                if (breadcrumbs[i].distanceTo(centerLatLng) <= 150) {
                                     isDanger = true;
                                     if (depth > dangerDepth) dangerDepth = depth;
+                                    break; 
                                 }
                             }
-                        });
-
-                        // Optimasi: Kalau satu titik aja udah kena air, langsung setop looping!
-                        if (isDanger) break;
-                    }
+                        }
+                    });
                 }
 
                 if (customRouteLine) map.removeLayer(customRouteLine);
 
-                // --- VISUALISASI ---
+                // --- 3. GAMBAR VISUAL FINAL ---
                 if (isDanger) {
                     customRouteLine = L.polyline(coords, {
                         color: '#ef4444', 
@@ -463,7 +467,6 @@
                     }).addTo(map);
 
                     updateAdaptiveWarning(dangerDepth);
-                    
                     setTimeout(() => {
                         alert("⚠️ RUTE BERBAHAYA!\nJalur memotong genangan sedalam " + dangerDepth + " cm.\nSistem memblokir rute. Ketuk jalan aspal lain!");
                     }, 100);
