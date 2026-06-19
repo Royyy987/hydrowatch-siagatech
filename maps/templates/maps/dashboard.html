@@ -345,7 +345,33 @@
     </script>
 
     <script>
-       // 2. MANAGEMENT INFRASTRUKTUR GEOSPASIAL
+        // 2. MANAGEMENT INFRASTRUKTUR GEOSPASIAL
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false 
+        }).setView([-0.502106, 117.153709], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        let userLocation = null;
+        let routingControl = null;
+        let customRouteLine = null; 
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                userLocation = L.latLng(position.coords.latitude, position.coords.longitude);
+                map.flyTo(userLocation, 16, { animate: true, duration: 1.5 });
+                L.marker(userLocation).addTo(map).bindPopup('<div class="text-xs font-bold text-center">Lokasi Kamu Sekarang</div>').openPopup();
+            }, function(error) {
+                console.warn("Akses lokasi ditolak atau gagal.");
+            });
+        }
+
         map.on('click', function(e) {
             const container = document.getElementById('alert-container');
             const depthText = document.getElementById('depth-text');
@@ -369,7 +395,7 @@
                 waypoints: [userLocation, e.latlng],
                 routeWhileDragging: false,
                 addWaypoints: false,
-                alternatives: true, // Minta rute alternatif
+                alternatives: true, 
                 show: false, 
                 lineOptions: {
                     styles: [{ color: 'transparent', weight: 0 }] 
@@ -391,7 +417,6 @@
                     let isThisRouteDanger = false;
                     let thisRouteMaxDepth = 0;
 
-                    // 1. BUAT REMAH ROTI (Setiap 10 meter)
                     let breadcrumbs = [];
                     for (let i = 0; i < coords.length - 1; i++) {
                         let start = coords[i];
@@ -409,22 +434,16 @@
                     }
                     breadcrumbs.push(coords[coords.length - 1]);
 
-                    // Ubah remah roti ke format Turf.js untuk akurasi mutlak
                     let turfPoints = breadcrumbs.map(b => turf.point([b.lng, b.lat]));
 
-                    // 2. CEK TABRAKAN DENGAN AREA LINGKARAN BANJIR
                     if (globalFloodData && globalFloodData.features) {
                         globalFloodData.features.forEach(function(feature) {
                             let depth = feature.properties.kedalaman;
                             if (depth >= 20) {
                                 let dangerZone = feature;
-                                
-                                // Pastikan zona bahaya menjadi Area Lingkaran utuh (150 meter)
                                 if (feature.geometry.type === 'Point') {
                                     dangerZone = turf.buffer(feature, 0.15, {units: 'kilometers'});
                                 }
-
-                                // Cek apakah ada satu saja remah roti yang masuk ke dalam Area Lingkaran
                                 for (let i = 0; i < turfPoints.length; i++) {
                                     if (turf.booleanPointInPolygon(turfPoints[i], dangerZone)) {
                                         isThisRouteDanger = true;
@@ -436,15 +455,13 @@
                         });
                     }
 
-                    // 3. SELEKSI RUTE TERBAIK
                     if (!isThisRouteDanger) {
                         selectedRoute = routes[r];
                         selectedCoords = coords;
                         selectedRouteIsDanger = false;
                         absoluteDangerDepth = 0;
-                        break; // Stop! Jalur Kering ditemukan!
+                        break; 
                     } else {
-                        // Jika terpaksa menabrak, simpan rute dengan genangan paling dangkal
                         if (thisRouteMaxDepth < absoluteDangerDepth) {
                             absoluteDangerDepth = thisRouteMaxDepth;
                             selectedRoute = routes[r];
@@ -455,7 +472,6 @@
 
                 if (customRouteLine) map.removeLayer(customRouteLine);
 
-                // 4. GAMBAR FINAL KE PETA
                 if (selectedRouteIsDanger) {
                     customRouteLine = L.polyline(selectedCoords, {
                         color: '#ef4444', 
@@ -485,7 +501,8 @@
             fetch('/api/flood-data/')
                 .then(response => response.json())
                 .then(data => {
-                    // --- 1. LOGIKA BANNER CUACA GLOBAL ---
+                    globalFloodData = data; // <-- INI YANG SEMPAT ILANG!
+                    
                     let maxDepth = 0;
                     data.features.forEach(feature => {
                         if (feature.properties.kedalaman > maxDepth) {
@@ -497,10 +514,9 @@
                     const globalIcon = document.getElementById('global-status-icon');
                     const globalText = document.getElementById('global-status-text');
 
-                    globalBanner.classList.remove('hidden'); // Tampilkan banner
+                    globalBanner.classList.remove('hidden'); 
                     globalBanner.className = "absolute top-4 left-1/2 -translate-x-1/2 z-20 px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 font-black text-xs md:text-sm tracking-wide transition-all duration-500 border-2 w-11/12 md:w-auto justify-center backdrop-blur-md";
 
-                    // Ganti warna sesuai level ancaman tertinggi se-Samarinda
                     if (maxDepth >= 60) {
                         globalBanner.classList.add('bg-red-600/90', 'text-white', 'border-red-400');
                         globalIcon.className = "fa-solid fa-radiation animate-pulse";
@@ -519,12 +535,10 @@
                         globalText.innerText = "KOTA AMAN: TIDAK ADA GENANGAN";
                     }
 
-                    // --- 2. HAPUS POLIGON LAMA JIKA ADA ---
                     if (floodLayer) {
                         map.removeLayer(floodLayer);
                     }
 
-                    // --- 3. GAMBAR POLIGON BARU DARI DATABASE ---
                     floodLayer = L.geoJSON(data, {
                         style: function (feature) {
                             let depth = feature.properties.kedalaman;
@@ -558,13 +572,10 @@
                 .catch(error => console.error('Error memuat data geospasial poligon peta:', error));
         }
 
-        // Panggil fungsi pertama kali saat halaman dimuat
         loadFloodData();
-
-        // --- 4. AUTO-REFRESH SETIAP 15 DETIK ---
         setInterval(loadFloodData, 15000);
     </script>
-
+    
     <script>
         // 3. HARDWARE CAPTURING INTERACTIVE LOGIC (CAMERA & GEOLOCATION CAPTURE)
         let videoStream;
