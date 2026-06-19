@@ -747,6 +747,8 @@
 
     <script>
         // 4. ADAPTIVE WARNING SYSTEM LOGIC CONTROL
+        let warningTimeout; // Penampung timer agar tidak error kalau di-spam klik
+
         function updateAdaptiveWarning(depthCm) {
             const container = document.getElementById('alert-container'); 
             const banner = document.getElementById('alert-banner');
@@ -755,16 +757,22 @@
             const depthText = document.getElementById('depth-text');
             const waterLevel = document.getElementById('water-level');
             
+            // 1. Reset timer lama jika user nge-spam klik poligon
+            clearTimeout(warningTimeout);
+            
+            // 2. Tampilkan Notifikasi
             container.classList.remove('hidden');
             setTimeout(() => {
                 container.classList.remove('opacity-0');
                 container.classList.add('opacity-100');
             }, 10);
             
+            // 3. Update Visual Meteran Air
             depthText.innerText = depthCm + " cm";
             let percent = Math.min(depthCm, 100); 
             waterLevel.style.height = percent + "%";
             
+            // 4. Update Warna & Teks Banner
             banner.classList.remove('bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'text-yellow-900');
             text.className = "";
             
@@ -786,6 +794,15 @@
                 icon.className = "fa-solid fa-check-circle";
                 text.innerText = "RUTE AMAN: TIDAK ADA GENANGAN";
             }
+
+            // 5. FITUR AUTO-HIDE: Hilangkan notif otomatis setelah 4 detik
+            warningTimeout = setTimeout(() => {
+                container.classList.remove('opacity-100');
+                container.classList.add('opacity-0');
+                setTimeout(() => { 
+                    container.classList.add('hidden'); 
+                }, 300);
+            }, 4000);
         }
     </script>
 
