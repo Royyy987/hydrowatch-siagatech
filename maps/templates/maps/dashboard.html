@@ -136,15 +136,43 @@
     </aside>
 
     <main class="flex-1 relative w-full h-full">
-        <div id="global-status-banner" class="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 font-black text-xs md:text-sm tracking-wide transition-all duration-500 border-2 bg-green-500 text-white border-green-600 w-11/12 md:w-auto justify-center">
-            <i id="global-status-icon" class="fa-solid fa-shield-halved text-lg"></i>
-            <span id="global-status-text">KOTA AMAN: TIDAK ADA TITIK BANJIR AKTIF</span>
-        </div>
 
+        <!-- 1. PETA DASAR -->
         <div id="map" class="absolute inset-0 z-0"></div>
 
+        <!-- 2. TOMBOL MENU SIDEBAR (Kiri Atas) -->
+        <button onclick="toggleSidebar()" class="md:hidden absolute top-4 left-4 z-30 bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-xl text-blue-600 dark:text-blue-400 hover:scale-105 transition-transform border border-gray-100 dark:border-gray-700">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
+        <!-- 3. BANNER STATUS KOTA (Digeser agar tidak nabrak menu di HP) -->
+        <div id="global-status-banner" class="absolute top-4 left-16 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 z-20 px-3 md:px-6 py-2.5 rounded-xl md:rounded-full shadow-lg flex items-center gap-2 md:gap-3 font-black text-[10px] md:text-sm tracking-wide transition-all duration-500 border-2 bg-green-500 text-white border-green-600 justify-center backdrop-blur-md">
+            <i id="global-status-icon" class="fa-solid fa-shield-halved text-sm md:text-lg"></i>
+            <span id="global-status-text" class="truncate">KOTA AMAN: TIDAK ADA TITIK BANJIR AKTIF</span>
+        </div>
+
+        <!-- 4. KOLOM PENCARIAN CCTV (Turun sedikit di bawah banner) -->
+        <div class="absolute top-[4.5rem] md:top-6 left-4 right-4 md:left-6 z-10 md:w-72">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl md:rounded-full shadow-lg flex items-center px-4 py-3 relative z-20 border border-gray-100 dark:border-gray-700">
+                <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Cari Live CCTV Smagov..." class="bg-transparent border-none outline-none ml-3 w-full text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400" autocomplete="off">
+            </div>
+            
+            <div id="searchResults" class="absolute top-full left-0 mt-2 w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden hidden z-10 border border-white/20 dark:border-gray-700">
+                <ul id="searchList" class="max-h-60 overflow-y-auto text-sm custom-scrollbar"></ul>
+            </div>
+        </div>
+
+        <!-- 5. NOTIFIKASI RUTE & DJANGO MESSAGES (Amankan di bawah kolom pencarian) -->
+        <div id="alert-container" class="absolute top-[8.5rem] md:top-6 left-1/2 -translate-x-1/2 z-10 cursor-pointer hidden opacity-0 transition-opacity duration-300 w-11/12 md:w-auto flex justify-center">
+            <div id="alert-banner" class="bg-green-500 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 font-bold text-[10px] md:text-sm tracking-wide transition-colors duration-500 whitespace-nowrap">
+                <i id="alert-icon" class="fa-solid fa-check-circle"></i>
+                <span id="alert-text">RUTE AMAN: TIDAK ADA GENANGAN</span>
+            </div>
+        </div>
+
         {% if messages %}
-        <div id="django-messages-container" class="absolute top-36 md:top-24 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-2 w-11/12 md:w-auto pointer-events-none transition-opacity duration-500">
+        <div id="django-messages-container" class="absolute top-[8.5rem] md:top-24 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-2 w-11/12 md:w-auto pointer-events-none transition-opacity duration-500">
             {% for message in messages %}
                 <div class="px-6 py-3 rounded-full text-white text-xs md:text-sm font-bold shadow-2xl text-center backdrop-blur-md animate-enter
                     {% if 'error' in message.tags %} bg-red-600/90 border border-red-400
@@ -154,7 +182,6 @@
                 </div>
             {% endfor %}
         </div>
-
         <script>
             setTimeout(() => {
                 const msgContainer = document.getElementById('django-messages-container');
@@ -166,33 +193,11 @@
         </script>
         {% endif %}
 
-        <button onclick="toggleSidebar()" class="md:hidden absolute top-5 left-4 z-20 bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-xl text-blue-600 dark:text-blue-400 hover:scale-105 transition-transform border border-gray-100 dark:border-gray-700">
-            <i class="fa-solid fa-bars text-lg"></i>
-        </button>
-
-        <div class="absolute top-20 left-4 right-4 md:top-6 md:left-6 z-10 md:w-72">
-            <div class="bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center px-4 py-3 relative z-20">
-                <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
-                <input type="text" id="searchInput" placeholder="Cari Live CCTV Smagov..." class="bg-transparent border-none outline-none ml-3 w-full text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400" autocomplete="off">
-            </div>
-            
-            <div id="searchResults" class="absolute top-full left-0 mt-2 w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden hidden z-10 border border-white/20 dark:border-gray-700">
-                <ul id="searchList" class="max-h-60 overflow-y-auto text-sm"></ul>
-            </div>
-        </div>
-
-        <div id="alert-container" class="absolute top-36 left-1/2 -translate-x-1/2 md:top-6 z-10 cursor-pointer hidden opacity-0 transition-opacity duration-300 w-11/12 md:w-auto flex justify-center">
-            <div id="alert-banner" class="bg-green-500 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 font-bold text-xs md:text-sm tracking-wide transition-colors duration-500 whitespace-nowrap">
-                <i id="alert-icon" class="fa-solid fa-check-circle"></i>
-                <span id="alert-text">RUTE AMAN: TIDAK ADA GENANGAN</span>
-            </div>
-        </div>
-
-        <div class="absolute right-2 md:right-6 top-36 md:top-1/2 md:-translate-y-1/2 z-10 scale-[0.6] md:scale-100 origin-top-right">
+        <!-- 6. INDIKATOR KEDALAMAN (Dikembalikan ke tengah vertikal agar peta lega) -->
+        <div class="absolute right-0 md:right-6 top-1/2 -translate-y-1/2 z-10 scale-[0.6] md:scale-100 origin-right pr-2 md:pr-0 pointer-events-none">
             <div class="bg-glass-light dark:bg-glass-dark backdrop-blur-md border border-white/20 dark:border-gray-700/50 p-6 rounded-3xl shadow-2xl flex flex-col items-center">
                 <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-widest mb-1 text-center">PERKIRAAN<br>KEDALAMAN</p>
                 <h1 id="depth-text" class="text-5xl font-black text-gray-900 dark:text-white mb-6">0 cm</h1>
-
                 <div class="w-12 h-40 bg-blue-100 dark:bg-gray-700 rounded-full relative overflow-hidden shadow-inner border-2 border-white dark:border-gray-600">
                     <div id="water-level" class="absolute bottom-0 w-full bg-blue-500 transition-all duration-1000" style="height: 0%;"></div>
                     <div class="absolute inset-0 flex flex-col justify-between py-2">
@@ -206,12 +211,14 @@
             </div>
         </div>
 
-        <button onclick="openReportModal()" class="fixed bottom-8 right-4 md:bottom-10 md:right-10 z-[9999] bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-transform hover:scale-110 flex items-center gap-3">
+        <!-- 7. TOMBOL LAPOR GENANGAN (Kanan Bawah) -->
+        <button onclick="openReportModal()" class="fixed bottom-6 right-4 md:bottom-10 md:right-10 z-[9999] bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-transform hover:scale-110 flex items-center gap-3">
             <i class="fa-solid fa-camera text-xl md:text-2xl"></i>
             <span class="font-bold pr-2 text-sm md:text-base hidden md:block">Lapor Genangan</span>
         </button>
 
-        <div id="reportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <!-- MODAL LAPOR GENANGAN -->
+        <div id="reportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-opacity duration-300">
             <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md shadow-2xl border border-white/20">
                 <h2 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-1">Lapor Genangan</h2>
                 <p class="text-xs text-gray-500 mb-4">Arahkan kamera ke jalan yang tergenang air.</p>
@@ -245,10 +252,8 @@
                                     <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-green-400"></div>
                                     <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-green-400"></div>
                                     <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-green-400"></div>
-                                    
                                     <i class="fa-solid fa-plus text-white/50 text-xl"></i>
                                 </div>
-                                
                                 <div class="absolute bottom-16 text-white text-[10px] md:text-xs font-bold bg-black/60 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg text-center">
                                     Posisikan genangan & objek (ban/trotoar)<br>di dalam kotak ini
                                 </div>
@@ -281,48 +286,13 @@
             </div>
         </div>
 
-        <div id="ai-chat-widget" class="absolute bottom-6 left-4 right-20 md:bottom-10 md:left-10 md:right-auto z-20 w-[calc(100vw-6rem)] md:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-blue-100 dark:border-gray-700 overflow-hidden flex flex-col transition-all">
-            <div class="bg-gray-500 text-gray-200 px-5 py-3 md:py-4 flex justify-between items-center cursor-not-allowed transition-colors" title="Fitur sedang dalam pemeliharaan">
-                <div class="font-bold flex items-center gap-2 text-xs md:text-sm">
-                    <i class="fa-solid fa-robot"></i> AI Navigator 
-                    <span class="bg-gray-700 text-white text-[9px] px-2 py-0.5 rounded-full ml-1 tracking-wider uppercase">Coming Soon</span>
-                </div>
-                <i class="fa-solid fa-lock text-xs md:text-sm"></i>
-            </div>
-            
-            <div id="chat-body" class="flex-col h-72 md:h-80 hidden">
-                <div id="chat-messages" class="flex-1 p-3 md:p-4 overflow-y-auto bg-gray-50 dark:bg-gray-900 text-[11px] md:text-xs space-y-3">
-                    <div class="bg-white dark:bg-gray-800 p-3 rounded-xl rounded-tl-none shadow-sm text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-gray-700 w-11/12 leading-relaxed">
-                        Halo {% if request.user.is_authenticated %}{{ request.user.username|title }}{% else %}Tamu{% endif %}! Mau ke mana hari ini? Pilih opsi di bawah atau ketik tujuanmu.
-                    </div>
-                </div>
-                
-                <div class="px-3 pb-2 bg-gray-50 dark:bg-gray-900 flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
-                    <button onclick="sendChatMessage('Bagaimana kondisi genangan air di sekitarku saat ini?')" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors border border-blue-200 dark:border-blue-700">
-                        <i class="fa-solid fa-location-crosshairs"></i> Cek Sekitarku
-                    </button>
-                    <button onclick="sendChatMessage('Carikan rute alternatif yang aman dari banjir menuju Kampus UMKT.')" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors border border-blue-200 dark:border-blue-700">
-                        <i class="fa-solid fa-graduation-cap"></i> Ke Kampus UMKT
-                    </button>
-                    <button onclick="sendChatMessage('Carikan rute alternatif yang aman dari banjir menuju Mall Lembuswana.')" class="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-colors border border-blue-200 dark:border-blue-700">
-                        <i class="fa-solid fa-shop"></i> Ke Mall Lembuswana
-                    </button>
-                </div>
-
-                <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex gap-2">
-                    <input type="text" id="chat-input" placeholder="Tujuan spesifik..." class="flex-1 bg-gray-100 dark:bg-gray-900 border-none rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-200 outline-none transition-all">
-                    <button onclick="sendChatMessage()" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition-transform active:scale-95">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <button onclick="openHelpModal()" class="absolute bottom-24 left-4 md:bottom-28 md:left-10 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md text-blue-600 dark:text-blue-400 rounded-2xl p-3 md:px-5 shadow-xl transition-transform hover:scale-105 border border-blue-100 dark:border-gray-700 flex items-center gap-3 font-bold text-xs md:text-sm">
+        <!-- 8. TOMBOL CARA MENGGUNAKAN (Ditumpuk di atas AI Navigator) -->
+        <button onclick="openHelpModal()" class="absolute bottom-20 left-4 md:bottom-28 md:left-10 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md text-blue-600 dark:text-blue-400 rounded-full md:rounded-2xl p-3 md:px-5 shadow-xl transition-transform hover:scale-105 border border-blue-100 dark:border-gray-700 flex items-center gap-3 font-bold text-xs md:text-sm">
             <i class="fa-solid fa-circle-question text-lg md:text-xl"></i>
             <span class="hidden md:block">Cara Menggunakan</span>
         </button>
 
+        <!-- MODAL CARA MENGGUNAKAN -->
         <div id="helpModal" class="hidden fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-opacity duration-300 opacity-0">
             <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl border border-white/20 relative transform scale-95 transition-transform duration-300" id="helpModalContent">
                 
@@ -335,34 +305,30 @@
                 </h2>
                 
                 <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                    
                     <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/50">
                         <h3 class="font-bold text-blue-700 dark:text-blue-300 mb-1.5 flex items-center gap-2">
-                            <i class="fa-solid fa-camera"></i> 1. Lapor Genangan (AI)
+                            <i class="fa-solid fa-camera"></i> 1. Lapor Genangan
                         </h3>
                         <p class="text-[11px] md:text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                            Ketuk tombol <b>Lapor Genangan</b> di kanan bawah. Arahkan kamera ke jalan yang banjir, lalu jepret. AI akan mengukur kedalaman air dan menandainya dengan warna peringatan di peta.
+                            Ketuk tombol <b>Lapor Genangan</b>. Arahkan kamera ke jalan banjir, lalu jepret. AI akan mengukur kedalaman air dan menandainya di peta.
                         </p>
                     </div>
-                    
                     <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-2xl border border-green-100 dark:border-green-800/50">
                         <h3 class="font-bold text-green-700 dark:text-green-300 mb-1.5 flex items-center gap-2">
-                            <i class="fa-solid fa-route"></i> 2. Cek Rute Perjalanan
+                            <i class="fa-solid fa-route"></i> 2. Cek Rute Aman
                         </h3>
                         <p class="text-[11px] md:text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                            Ketuk area manapun di peta untuk melihat jalan tercepat dari lokasimu. Jika garis berwarna <b>Biru</b>, artinya rute 100% aman. Jika <b>Merah Putus-putus</b>, jalur tersebut terendam banjir!
+                            Ketuk area di peta. Jika rute berwarna <b>Biru</b>, jalanan kering. Jika <b>Merah Putus-putus</b>, jalur terendam banjir!
                         </p>
                     </div>
-                    
                     <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-2xl border border-orange-100 dark:border-orange-800/50">
                         <h3 class="font-bold text-orange-700 dark:text-orange-300 mb-1.5 flex items-center gap-2">
-                            <i class="fa-solid fa-shuffle"></i> 3. Mencari Jalan Memutar
+                            <i class="fa-solid fa-shuffle"></i> 3. Jalan Memutar
                         </h3>
                         <p class="text-[11px] md:text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                            Jika rutemu diblokir (Merah), cari jalan raya atau gang lain yang terlihat aman di peta lalu ketuk <b>(tap)</b> jalan tersebut. Rute secara otomatis akan ditarik menghindari banjir!
+                            Jika rutemu terblokir (Merah), ketuk jalan/gang lain yang aman. Rute akan otomatis membelok menghindari banjir.
                         </p>
                     </div>
-
                 </div>
                 
                 <div class="mt-6 pt-2">
@@ -372,6 +338,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- 9. AI NAVIGATOR WIDGET (Kiri Bawah, beri ruang untuk tombol kamera) -->
+        <div id="ai-chat-widget" class="absolute bottom-6 left-4 right-[4.5rem] md:bottom-10 md:left-10 md:right-auto z-20 md:w-80 bg-white dark:bg-gray-800 rounded-2xl md:rounded-3xl shadow-2xl border border-blue-100 dark:border-gray-700 overflow-hidden flex flex-col transition-all">
+            <div class="bg-gray-500 text-gray-200 px-5 py-3 md:py-4 flex justify-between items-center cursor-not-allowed transition-colors" title="Fitur sedang dalam pemeliharaan">
+                <div class="font-bold flex items-center gap-2 text-xs md:text-sm">
+                    <i class="fa-solid fa-robot"></i> AI Navigator 
+                    <span class="bg-gray-700 text-white text-[9px] px-2 py-0.5 rounded-full ml-1 tracking-wider uppercase">Coming Soon</span>
+                </div>
+                <i class="fa-solid fa-lock text-xs md:text-sm"></i>
+            </div>
+        </div>
+
     </main>
 
     <script>
