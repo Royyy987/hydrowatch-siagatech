@@ -560,12 +560,13 @@
 
         let floodLayer; 
         let globalFloodData = null;
+        let isGlobalBannerDone = false; // FLAG BARU: Biar banner atas nggak cerewet tiap 15 detik
 
         function loadFloodData() {
             fetch('/api/flood-data/')
                 .then(response => response.json())
                 .then(data => {
-                    globalFloodData = data; // <-- INI YANG SEMPAT ILANG!
+                    globalFloodData = data; 
                     
                     let maxDepth = 0;
                     data.features.forEach(feature => {
@@ -578,27 +579,48 @@
                     const globalIcon = document.getElementById('global-status-icon');
                     const globalText = document.getElementById('global-status-text');
 
-                    globalBanner.classList.remove('hidden'); 
-                    globalBanner.className = "absolute top-4 left-1/2 -translate-x-1/2 z-20 px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 font-black text-xs md:text-sm tracking-wide transition-all duration-500 border-2 w-11/12 md:w-auto justify-center backdrop-blur-md";
+                    // HANYA EKSEKUSI LOGIKA BANNER JIKA BELUM PERNAH MUNCUL
+                    if (!isGlobalBannerDone) {
+                        // Bersihkan sisa warna bawaan HTML
+                        globalBanner.classList.remove('bg-red-600/90', 'border-red-400', 'bg-orange-500/90', 'border-orange-400', 'bg-yellow-400/90', 'text-yellow-900', 'border-yellow-500', 'bg-green-500/90', 'border-green-400');
+                        
+                        if (maxDepth >= 60) {
+                            globalBanner.classList.add('bg-red-600/90', 'text-white', 'border-red-400');
+                            globalIcon.className = "fa-solid fa-radiation animate-pulse";
+                            globalText.innerText = "STATUS KOTA: BAHAYA MUTLAK (>60cm)";
+                        } else if (maxDepth >= 30) {
+                            globalBanner.classList.add('bg-orange-500/90', 'text-white', 'border-orange-400');
+                            globalIcon.className = "fa-solid fa-triangle-exclamation";
+                            globalText.innerText = "STATUS KOTA: AWAS (>30cm)";
+                        } else if (maxDepth > 0) {
+                            globalBanner.classList.add('bg-yellow-400/90', 'text-yellow-900', 'border-yellow-500');
+                            globalIcon.className = "fa-solid fa-cloud-showers-heavy";
+                            globalText.innerText = "STATUS KOTA: WASPADA (ADA GENANGAN)";
+                        } else {
+                            globalBanner.classList.add('bg-green-500/90', 'text-white', 'border-green-400');
+                            globalIcon.className = "fa-solid fa-shield-halved";
+                            globalText.innerText = "KOTA AMAN: TIDAK ADA GENANGAN";
+                        }
 
-                    if (maxDepth >= 60) {
-                        globalBanner.classList.add('bg-red-600/90', 'text-white', 'border-red-400');
-                        globalIcon.className = "fa-solid fa-radiation animate-pulse";
-                        globalText.innerText = "STATUS KOTA: BAHAYA MUTLAK (>60cm)";
-                    } else if (maxDepth >= 30) {
-                        globalBanner.classList.add('bg-orange-500/90', 'text-white', 'border-orange-400');
-                        globalIcon.className = "fa-solid fa-triangle-exclamation";
-                        globalText.innerText = "STATUS KOTA: AWAS (>30cm)";
-                    } else if (maxDepth > 0) {
-                        globalBanner.classList.add('bg-yellow-400/90', 'text-yellow-900', 'border-yellow-500');
-                        globalIcon.className = "fa-solid fa-cloud-showers-heavy";
-                        globalText.innerText = "STATUS KOTA: WASPADA (ADA GENANGAN)";
-                    } else {
-                        globalBanner.classList.add('bg-green-500/90', 'text-white', 'border-green-400');
-                        globalIcon.className = "fa-solid fa-shield-halved";
-                        globalText.innerText = "KOTA AMAN: TIDAK ADA GENANGAN";
+                        // Munculkan banner dengan animasi
+                        globalBanner.classList.remove('hidden'); 
+                        globalBanner.style.opacity = '1';
+                        globalBanner.style.transform = 'translateY(0)';
+                        
+                        // AUTO-HIDE: Usir bannernya setelah 6 detik
+                        setTimeout(() => {
+                            globalBanner.style.opacity = '0';
+                            globalBanner.style.transform = 'translateY(-20px)'; // Efek meluncur ke atas
+                            setTimeout(() => { 
+                                globalBanner.classList.add('hidden'); 
+                            }, 500);
+                        }, 6000);
+
+                        // Kunci gemboknya biar nggak kepanggil lagi pas auto-refresh 15 detik
+                        isGlobalBannerDone = true; 
                     }
 
+                    // --- LOGIKA POLIGON BANJIR TETAP JALAN TERUS ---
                     if (floodLayer) {
                         map.removeLayer(floodLayer);
                     }
