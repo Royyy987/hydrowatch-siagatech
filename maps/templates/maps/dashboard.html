@@ -361,6 +361,10 @@
         let userLocation = null;
         let routingControl = null;
         let customRouteLine = null; 
+        
+        // --- VARIABEL BARU UNTUK FITUR DETOUR PINTAR ---
+        let currentDestination = null; 
+        let isCurrentRouteDanger = false; 
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
@@ -388,11 +392,26 @@
                 return;
             }
 
+            let waypointsToUse = [];
+
+            // --- LOGIKA "TITIK TRANSIT PAKSA" (DETOUR) ---
+            if (isCurrentRouteDanger && currentDestination) {
+                // Jika rute sebelumnya MERAH, jadikan klik ini sebagai "Jalan Memutar"
+                waypointsToUse = [userLocation, e.latlng, currentDestination];
+                
+                // Reset status agar klik berikutnya bisa jadi tujuan baru lagi
+                isCurrentRouteDanger = false; 
+            } else {
+                // Jika rute sebelumnya AMAN, jadikan klik ini sebagai Tujuan Baru
+                currentDestination = e.latlng;
+                waypointsToUse = [userLocation, currentDestination];
+            }
+
             if (routingControl) map.removeControl(routingControl);
             if (customRouteLine) map.removeLayer(customRouteLine);
 
             routingControl = L.Routing.control({
-                waypoints: [userLocation, e.latlng],
+                waypoints: waypointsToUse, // Gunakan array waypoint yang sudah pintar
                 routeWhileDragging: false,
                 addWaypoints: false,
                 alternatives: true, 
@@ -401,7 +420,8 @@
                     styles: [{ color: 'transparent', weight: 0 }] 
                 },
                 createMarker: function(i, waypoint, n) {
-                    if (i === 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Kamu');
+                    if (i === n - 1) return L.marker(waypoint.latLng).bindPopup('Tujuan Akhir');
+                    if (i > 0 && i < n - 1) return L.marker(waypoint.latLng).bindPopup('Titik Putar Aman');
                     return null; 
                 }
             }).on('routesfound', function(e) {
@@ -472,7 +492,10 @@
 
                 if (customRouteLine) map.removeLayer(customRouteLine);
 
+                // --- 4. GAMBAR FINAL & UPDATE STATUS ---
                 if (selectedRouteIsDanger) {
+                    isCurrentRouteDanger = true; // Kunci status menjadi bahaya
+
                     customRouteLine = L.polyline(selectedCoords, {
                         color: '#ef4444', 
                         weight: 6,
@@ -481,9 +504,11 @@
 
                     updateAdaptiveWarning(absoluteDangerDepth);
                     setTimeout(() => {
-                        alert("⚠️ PERINGATAN:\nSemua opsi jalur yang diberikan server memotong area banjir. Sistem memilih rute dengan genangan terdangkal (" + absoluteDangerDepth + " cm). Harap berhati-hati!");
+                        alert("⚠️ JALUR TERBLOKIR BANJIR!\n\nSOLUSI: Silakan ketuk (tap) jalan kecil/alternatif lain yang AMAN di peta. Sistem akan otomatis membelokkan rutemu ke jalan tersebut!");
                     }, 100);
                 } else {
+                    isCurrentRouteDanger = false; // Reset status aman
+
                     customRouteLine = L.polyline(selectedCoords, {
                         color: '#3b82f6', 
                         weight: 6
