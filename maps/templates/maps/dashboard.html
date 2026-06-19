@@ -22,6 +22,12 @@
         .leaflet-routing-container {
             display: none !important;
         }
+
+        /* Scrollbar kustom untuk modal panduan */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
     </style>
 
     <script>
@@ -307,6 +313,61 @@
                     <input type="text" id="chat-input" placeholder="Tujuan spesifik..." class="flex-1 bg-gray-100 dark:bg-gray-900 border-none rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-200 outline-none transition-all">
                     <button onclick="sendChatMessage()" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 transition-transform active:scale-95">
                         <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="openHelpModal()" class="absolute bottom-24 left-4 md:bottom-28 md:left-10 z-20 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md text-blue-600 dark:text-blue-400 rounded-2xl p-3 md:px-5 shadow-xl transition-transform hover:scale-105 border border-blue-100 dark:border-gray-700 flex items-center gap-3 font-bold text-xs md:text-sm">
+            <i class="fa-solid fa-circle-question text-lg md:text-xl"></i>
+            <span class="hidden md:block">Cara Menggunakan</span>
+        </button>
+
+        <div id="helpModal" class="hidden fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-opacity duration-300 opacity-0">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl border border-white/20 relative transform scale-95 transition-transform duration-300" id="helpModalContent">
+                
+                <button onclick="closeHelpModal()" class="absolute top-5 right-5 text-gray-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-2xl"></i>
+                </button>
+                
+                <h2 class="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                    <i class="fa-solid fa-book-open text-blue-500"></i> Panduan Aplikasi
+                </h2>
+                
+                <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/50">
+                        <h3 class="font-bold text-blue-700 dark:text-blue-300 mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-camera"></i> 1. Lapor Genangan (AI)
+                        </h3>
+                        <p class="text-[11px] md:text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                            Ketuk tombol <b>Lapor Genangan</b> di kanan bawah. Arahkan kamera ke jalan yang banjir, lalu jepret. AI akan mengukur kedalaman air dan menandainya dengan warna peringatan di peta.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-2xl border border-green-100 dark:border-green-800/50">
+                        <h3 class="font-bold text-green-700 dark:text-green-300 mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-route"></i> 2. Cek Rute Perjalanan
+                        </h3>
+                        <p class="text-[11px] md:text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                            Ketuk area manapun di peta untuk melihat jalan tercepat dari lokasimu. Jika garis berwarna <b>Biru</b>, artinya rute 100% aman. Jika <b>Merah Putus-putus</b>, jalur tersebut terendam banjir!
+                        </p>
+                    </div>
+                    
+                    <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-2xl border border-orange-100 dark:border-orange-800/50">
+                        <h3 class="font-bold text-orange-700 dark:text-orange-300 mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-shuffle"></i> 3. Mencari Jalan Memutar
+                        </h3>
+                        <p class="text-[11px] md:text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                            Jika rutemu diblokir (Merah), cari jalan raya atau gang lain yang terlihat aman di peta lalu ketuk <b>(tap)</b> jalan tersebut. Rute secara otomatis akan ditarik menghindari banjir!
+                        </p>
+                    </div>
+
+                </div>
+                
+                <div class="mt-6 pt-2">
+                    <button onclick="closeHelpModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 shadow-lg">
+                        Mengerti, Ayo Mulai!
                     </button>
                 </div>
             </div>
@@ -956,5 +1017,36 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses AI...';
         }
     </script>
+
+    <script>
+        // LOGIKA UNTUK MODAL PANDUAN PENGGUNA
+        function openHelpModal() {
+            const modal = document.getElementById('helpModal');
+            const content = document.getElementById('helpModalContent');
+            
+            modal.classList.remove('hidden');
+            
+            // Jeda sedikit untuk mentrigger animasi transisi Tailwind
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeHelpModal() {
+            const modal = document.getElementById('helpModal');
+            const content = document.getElementById('helpModalContent');
+            
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+    </script>
+    
 </body>
 </html>
