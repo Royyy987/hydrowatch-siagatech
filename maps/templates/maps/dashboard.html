@@ -137,21 +137,17 @@
 
     <main class="flex-1 relative w-full h-full">
 
-        <!-- 1. PETA DASAR -->
         <div id="map" class="absolute inset-0 z-0"></div>
 
-        <!-- 2. TOMBOL MENU SIDEBAR (Kiri Atas) -->
         <button onclick="toggleSidebar()" class="md:hidden absolute top-4 left-4 z-30 bg-white dark:bg-gray-800 p-2.5 rounded-xl shadow-xl text-blue-600 dark:text-blue-400 hover:scale-105 transition-transform border border-gray-100 dark:border-gray-700">
             <i class="fa-solid fa-bars text-lg"></i>
         </button>
 
-        <!-- 3. BANNER STATUS KOTA (Digeser agar tidak nabrak menu di HP) -->
-        <div id="global-status-banner" class="absolute top-4 left-16 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 z-20 px-3 md:px-6 py-2.5 rounded-xl md:rounded-full shadow-lg flex items-center gap-2 md:gap-3 font-black text-[10px] md:text-sm tracking-wide transition-all duration-500 border-2 bg-green-500 text-white border-green-600 justify-center backdrop-blur-md">
+        <div id="global-status-banner" class="absolute top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 md:px-6 py-2.5 rounded-full shadow-lg flex items-center gap-2 md:gap-3 font-black text-[10px] md:text-sm tracking-wide transition-all duration-500 border-2 bg-green-500 text-white border-green-600 justify-center backdrop-blur-md w-[85%] md:w-max text-center whitespace-nowrap">
             <i id="global-status-icon" class="fa-solid fa-shield-halved text-sm md:text-lg"></i>
             <span id="global-status-text" class="truncate">KOTA AMAN: TIDAK ADA TITIK BANJIR AKTIF</span>
         </div>
 
-        <!-- 4. KOLOM PENCARIAN CCTV (Turun sedikit di bawah banner) -->
         <div class="absolute top-[4.5rem] md:top-6 left-4 right-4 md:left-6 z-10 md:w-72">
             <div class="bg-white dark:bg-gray-800 rounded-2xl md:rounded-full shadow-lg flex items-center px-4 py-3 relative z-20 border border-gray-100 dark:border-gray-700">
                 <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
@@ -163,16 +159,15 @@
             </div>
         </div>
 
-        <!-- 5. NOTIFIKASI RUTE & DJANGO MESSAGES (Amankan di bawah kolom pencarian) -->
-        <div id="alert-container" class="fixed top-[8.5rem] md:top-20 left-1/2 -translate-x-1/2 z-[9999] cursor-pointer hidden opacity-0 transition-opacity duration-300 w-11/12 md:w-auto flex justify-center">
-            <div id="alert-banner" class="bg-green-500 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 font-bold text-[10px] md:text-sm tracking-wide transition-colors duration-500 whitespace-nowrap">
+        <div id="alert-container" class="absolute top-[8.5rem] md:top-20 left-1/2 -translate-x-1/2 z-[9998] cursor-pointer hidden opacity-0 transition-opacity duration-300 w-[85%] md:w-max flex justify-center">
+            <div id="alert-banner" class="bg-green-500 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-3 font-bold text-[10px] md:text-sm tracking-wide transition-colors duration-500 whitespace-nowrap w-full md:w-auto justify-center">
                 <i id="alert-icon" class="fa-solid fa-check-circle"></i>
                 <span id="alert-text">RUTE AMAN: TIDAK ADA GENANGAN</span>
             </div>
         </div>
 
         {% if messages %}
-        <div id="django-messages-container" class="fixed top-[8.5rem] md:top-24 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-2 w-11/12 md:w-auto pointer-events-none transition-opacity duration-500">
+        <div id="django-messages-container" class="absolute top-[11.5rem] md:top-36 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-2 w-[85%] md:w-max pointer-events-none transition-opacity duration-500">
             {% for message in messages %}
                 <div class="px-6 py-3 rounded-full text-white text-xs md:text-sm font-bold shadow-2xl text-center backdrop-blur-md animate-enter
                     {% if 'error' in message.tags %} bg-red-600/90 border border-red-400
