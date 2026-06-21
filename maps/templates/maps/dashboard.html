@@ -109,7 +109,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
             
             <!-- MENU UMUM (Muncul untuk Semua User) -->
@@ -131,20 +131,21 @@
             </a>
 
             <!-- PANEL KHUSUS OPERATOR (Hanya dirender jika user punya hak akses Staff) -->
-            {% if request.user.is_staff %}
-            <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-                <p class="px-4 text-[10px] font-black tracking-wider text-gray-400 uppercase mb-2">Panel Operator</p>
-                
-                <!-- Sementara href diisi "#" sampai backend URL-nya kita buat -->
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-colors font-bold">
-                    <i class="fa-solid fa-users-gear"></i> Manajemen User
-                </a>
-                
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors font-bold">
-                    <i class="fa-solid fa-folder-tree"></i> Laporan Masuk
-                </a>
-            </div>
-            {% endif %}
+            {% for group in request.user.groups.all %}
+                {% if group.name == 'Operator' %}
+                <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p class="px-4 text-[10px] font-black tracking-wider text-gray-400 uppercase mb-2">Panel Operator</p>
+                    
+                    <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-colors font-bold">
+                        <i class="fa-solid fa-users-gear"></i> Manajemen User
+                    </a>
+                    
+                    <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors font-bold">
+                        <i class="fa-solid fa-folder-tree"></i> Laporan Masuk
+                    </a>
+                </div>
+                {% endif %}
+            {% endfor %}
 
             <!-- TOMBOL THEME (Letaknya di paling bawah) -->
             <button onclick="toggleTheme()" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl mt-4 transition-colors">
