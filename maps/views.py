@@ -5,7 +5,8 @@ from django.shortcuts import render
 from django.http import JsonResponse
 # from django.utils import timezone
 # from datetime import timedelta
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.gis.geos import Point, LineString
 from reports.models import FloodReport
@@ -116,3 +117,30 @@ def deepseek_chat(request):
             return JsonResponse({'reply': response.choices[0].message.content})
         except Exception as e:
             return JsonResponse({'reply': f"Maaf, koneksi ke AI terputus: {str(e)}"})
+        
+def is_operator(user):
+    return user.groups.filter(name='Operator').exists() or user.is_superuser
+
+# --- 1. VIEW MANAJEMEN USER ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard') # Jika warga biasa nekat ngetik URL ini, lempar balik ke map!
+def manajemen_user(request):
+    # Ambil semua user dari database, urutkan dari yang terbaru
+    users = User.objects.all().order_by('-date_joined')
+    
+    context = {
+        'user_list': users,
+        'page_title': 'Manajemen User'
+    }
+    return render(request, 'maps/manajemen_user.html', context)
+
+# --- 2. VIEW LAPORAN MASUK ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard')
+def laporan_masuk(request):
+    # Logika query database laporan genangan akan kita taruh di sini nanti
+    
+    context = {
+        'page_title': 'Laporan Masuk'
+    }
+    return render(request, 'maps/laporan_masuk.html', context)

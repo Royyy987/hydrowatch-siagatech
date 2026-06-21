@@ -16,4 +16,8 @@ urlpatterns = [
     path('login/', authentication.login_view, name='login'),
     path('register/', authentication.register_view, name='register'),
     path('logout/', authentication.logout_view, name='logout'),
+    
+    # RUTE KHUSUS OPERATOR
+    path('operator/users/', views.manajemen_user, name='manajemen_user'),
+    path('operator/laporan/', views.laporan_masuk, name='laporan_masuk'),
 ]
