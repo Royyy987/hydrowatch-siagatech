@@ -179,3 +179,14 @@ def toggle_role_user(request, user_id):
         messages.success(request, f"{target_user.username} berhasil diangkat menjadi Operator.")
         
     return redirect('manajemen_user')
+
+# --- VIEW LAPORAN MASUK (Mencegah Error 500) ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard')
+def laporan_masuk(request):
+    # Logika query database laporan genangan akan kita taruh di sini nanti
+    
+    context = {
+        'page_title': 'Laporan Masuk'
+    }
+    return render(request, 'maps/laporan_masuk.html', context)
