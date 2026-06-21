@@ -603,12 +603,12 @@
                         // Munculkan banner dengan animasi
                         globalBanner.classList.remove('hidden'); 
                         globalBanner.style.opacity = '1';
-                        globalBanner.style.transform = 'translateY(0)';
+                        globalBanner.style.transform = 'translate(-50%, 0)'; 
                         
                         // AUTO-HIDE: Usir bannernya setelah 6 detik
                         setTimeout(() => {
                             globalBanner.style.opacity = '0';
-                            globalBanner.style.transform = 'translateY(-20px)'; // Efek meluncur ke atas
+                            globalBanner.style.transform = 'translate(-50%, -20px)'; 
                             setTimeout(() => { 
                                 globalBanner.classList.add('hidden'); 
                             }, 500);
