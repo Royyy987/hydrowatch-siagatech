@@ -19,5 +19,7 @@ urlpatterns = [
     
     # RUTE KHUSUS OPERATOR
     path('operator/users/', views.manajemen_user, name='manajemen_user'),
+    path('operator/users/toggle-ban/<int:user_id>/', views.toggle_ban_user, name='toggle_ban_user'),
+    path('operator/users/toggle-role/<int:user_id>/', views.toggle_role_user, name='toggle_role_user'),
     path('operator/laporan/', views.laporan_masuk, name='laporan_masuk'),
 ]

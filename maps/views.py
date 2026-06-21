@@ -1,12 +1,14 @@
 import os
 import json
 import requests
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 # from django.utils import timezone
 # from datetime import timedelta
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.gis.geos import Point, LineString
 from reports.models import FloodReport
@@ -123,10 +125,10 @@ def is_operator(user):
 
 # --- 1. VIEW MANAJEMEN USER ---
 @login_required
-@user_passes_test(is_operator, login_url='dashboard') # Jika warga biasa nekat ngetik URL ini, lempar balik ke map!
+@user_passes_test(is_operator, login_url='dashboard')
 def manajemen_user(request):
-    # Ambil semua user dari database, urutkan dari yang terbaru
-    users = User.objects.all().order_by('-date_joined')
+    # FIX: Sembunyikan Superuser dari daftar
+    users = User.objects.exclude(is_superuser=True).order_by('-date_joined')
     
     context = {
         'user_list': users,
@@ -134,13 +136,46 @@ def manajemen_user(request):
     }
     return render(request, 'maps/manajemen_user.html', context)
 
-# --- 2. VIEW LAPORAN MASUK ---
+# --- 2. FITUR BAN / UNBAN AKUN ---
 @login_required
 @user_passes_test(is_operator, login_url='dashboard')
-def laporan_masuk(request):
-    # Logika query database laporan genangan akan kita taruh di sini nanti
+@require_POST
+def toggle_ban_user(request, user_id):
+    target_user = get_object_or_404(User, id=user_id)
     
-    context = {
-        'page_title': 'Laporan Masuk'
-    }
-    return render(request, 'maps/laporan_masuk.html', context)
+    # Cegah ban diri sendiri
+    if target_user == request.user:
+        messages.error(request, "Anda tidak bisa membekukan akun sendiri!")
+        return redirect('manajemen_user')
+
+    # Toggle status aktif
+    target_user.is_active = not target_user.is_active
+    target_user.save()
+    
+    status_text = "diaktifkan kembali" if target_user.is_active else "dibekukan"
+    messages.success(request, f"Akun {target_user.username} berhasil {status_text}.")
+    return redirect('manajemen_user')
+
+# --- 3. FITUR PROMOTE / DEMOTE ROLE ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard')
+@require_POST
+def toggle_role_user(request, user_id):
+    target_user = get_object_or_404(User, id=user_id)
+    
+    # Cegah ubah role diri sendiri
+    if target_user == request.user:
+        messages.error(request, "Anda tidak bisa mengubah role Anda sendiri!")
+        return redirect('manajemen_user')
+
+    # Ambil atau buat grup Operator
+    operator_group, created = Group.objects.get_or_create(name='Operator')
+    
+    if operator_group in target_user.groups.all():
+        target_user.groups.remove(operator_group)
+        messages.success(request, f"{target_user.username} sekarang menjadi Warga biasa.")
+    else:
+        target_user.groups.add(operator_group)
+        messages.success(request, f"{target_user.username} berhasil diangkat menjadi Operator.")
+        
+    return redirect('manajemen_user')
