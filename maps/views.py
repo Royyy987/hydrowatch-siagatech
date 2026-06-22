@@ -180,13 +180,44 @@ def toggle_role_user(request, user_id):
         
     return redirect('manajemen_user')
 
-# --- VIEW LAPORAN MASUK (Mencegah Error 500) ---
+# --- 4. VIEW LAPORAN MASUK ---
 @login_required
 @user_passes_test(is_operator, login_url='dashboard')
 def laporan_masuk(request):
-    # Logika query database laporan genangan akan kita taruh di sini nanti
+    # Ambil semua laporan dari warga, urutkan dari yang paling baru masuk
+    # Asumsi model bernama 'Report', jika di projekmu namanya berbeda (misal FloodReport), tinggal sesuaikan nama modelnya
+    from .models import Report 
+    laporan_list = Report.objects.all().order_by('-created_at')
     
     context = {
+        'laporan_list': laporan_list,
         'page_title': 'Laporan Masuk'
     }
     return render(request, 'maps/laporan_masuk.html', context)
+
+# --- 5. AKSI OPERATOR: SETUJUI LAPORAN ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard')
+@require_POST
+def setujui_laporan(request, report_id):
+    from .models import Report
+    laporan = get_object_or_404(Report, id=report_id)
+    laporan.status = 'Disetujui' # Asumsi ada field status di modelmu
+    laporan.save()
+    
+    messages.success(request, f"Laporan #{laporan.id} berhasil divalidasi dan ditayangkan di peta!")
+    return redirect('laporan_masuk')
+
+# --- 6. AKSI OPERATOR: TOLAK / HAPUS LAPORAN ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard')
+@require_POST
+def tolak_laporan(request, report_id):
+    from .models import Report
+    laporan = get_object_or_404(Report, id=report_id)
+    laporan.status = 'Ditolak'
+    # Atau jika mau langsung dihapus dari database, gunakan: laporan.delete()
+    laporan.save()
+    
+    messages.warning(request, f"Laporan #{laporan.id} telah ditolak dan dihapus dari sistem.")
+    return redirect('laporan_masuk')

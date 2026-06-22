@@ -22,4 +22,6 @@ urlpatterns = [
     path('operator/users/toggle-ban/<int:user_id>/', views.toggle_ban_user, name='toggle_ban_user'),
     path('operator/users/toggle-role/<int:user_id>/', views.toggle_role_user, name='toggle_role_user'),
     path('operator/laporan/', views.laporan_masuk, name='laporan_masuk'),
+    path('operator/laporan/setujui/<int:report_id>/', views.setujui_laporan, name='setujui_laporan'),
+    path('operator/laporan/tolak/<int:report_id>/', views.tolak_laporan, name='tolak_laporan'),
 ]
