@@ -215,3 +215,28 @@ def tolak_laporan(request, report_id):
     
     messages.warning(request, f"Laporan palsu/spam telah ditolak dan dihapus.")
     return redirect('laporan_masuk')
+
+# --- 7. VIEW UNTUK WARGA: KIRIM FEEDBACK ---
+@login_required
+@require_POST
+def kirim_feedback(request):
+    pesan = request.POST.get('pesan')
+    if pesan:
+        from .models import Feedback # Sesuaikan import jika file models beda folder
+        Feedback.objects.create(user=request.user, pesan=pesan)
+        messages.success(request, "Terima kasih! Feedback kamu berhasil dikirim ke Operator.")
+    return redirect('dashboard')
+
+# --- 8. VIEW UNTUK OPERATOR: BACA FEEDBACK ---
+@login_required
+@user_passes_test(is_operator, login_url='dashboard')
+def daftar_feedback(request):
+    from .models import Feedback
+    # Ambil semua feedback urut dari yang paling baru
+    feedbacks = Feedback.objects.all().order_by('-created_at')
+    
+    context = {
+        'feedbacks': feedbacks,
+        'page_title': 'Feedback Pengguna'
+    }
+    return render(request, 'maps/daftar_feedback.html', context)

@@ -7,6 +7,7 @@ urlpatterns = [
     path('akun/', views.pengaturan_akun, name='pengaturan_akun'),
     path('laporan-saya/', views.laporan_saya, name='laporan_saya'),
     path('notifikasi/', views.pengaturan_notifikasi, name='pengaturan_notifikasi'),
+    path('feedback/kirim/', views.kirim_feedback, name='kirim_feedback'),
     
     # Endpoint rahasia untuk menyuplai data peta
     path('api/flood-data/', views.get_flood_data, name='flood_data'),
@@ -24,4 +25,5 @@ urlpatterns = [
     path('operator/laporan/', views.laporan_masuk, name='laporan_masuk'),
     path('operator/laporan/setujui/<int:report_id>/', views.setujui_laporan, name='setujui_laporan'),
     path('operator/laporan/tolak/<int:report_id>/', views.tolak_laporan, name='tolak_laporan'),
+    path('operator/feedback/', views.daftar_feedback, name='daftar_feedback'),
 ]

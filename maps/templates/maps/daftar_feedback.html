@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Masuk - HydroWatch</title>
+    <script>
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
+    </style>
+</head>
+<body class="flex h-[100dvh] w-screen overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors">
+
+    <aside class="hidden md:flex flex-col w-72 bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-r border-gray-200 dark:border-gray-700/50 shadow-xl h-full z-40">
+        <div class="flex flex-col items-center pt-10 pb-6 border-b dark:border-gray-700">
+            <div class="w-20 h-20 rounded-full border-4 border-blue-100 flex items-center justify-center text-blue-500 text-3xl mb-3 bg-white dark:bg-gray-800">
+                <i class="fa-solid fa-comments"></i>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800 dark:text-white">Panel Admin</h2>
+            <p class="text-xs text-blue-600 font-bold bg-blue-100 px-3 py-1 rounded-full mt-2">Mode Operator</p>
+        </div>
+        
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Kembali ke Peta
+            </a>
+            
+            <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <p class="px-4 text-[10px] font-black tracking-wider text-gray-400 uppercase mb-2">Menu Operator</p>
+                <a href="{% url 'manajemen_user' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors font-bold">
+                    <i class="fa-solid fa-users-gear"></i> Manajemen User
+                </a>
+                <a href="{% url 'laporan_masuk' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors font-bold">
+                    <i class="fa-solid fa-folder-tree"></i> Laporan Masuk
+                </a>
+                <a href="{% url 'daftar_feedback' %}" class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-blue-700 bg-blue-50 dark:bg-blue-900/30 rounded-xl relative transition-colors">
+                    <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full"></div>
+                    <i class="fa-solid fa-envelope-open-text"></i> Umpan Balik
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
+        <header class="px-8 py-6 bg-transparent z-10 flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-black text-gray-800 dark:text-white tracking-tight">Kotak Suara Warga</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Saran, masukan, dan laporan kendala dari pengguna aplikasi.</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-xl flex items-center gap-3">
+                <i class="fa-solid fa-inbox text-blue-500"></i>
+                <span class="font-bold text-gray-700 dark:text-gray-200">Total: {{ feedbacks|length }} Pesan</span>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto px-8 pb-8 custom-scrollbar">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for fb in feedbacks %}
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+                                {{ fb.user.username|make_list|first|upper }}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-white">{{ fb.user.username }}</h3>
+                                <p class="text-[10px] text-gray-400"><i class="fa-regular fa-clock"></i> {{ fb.created_at|date:"d M Y, H:i" }}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed italic">"{{ fb.pesan }}"</p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full text-center py-12 text-gray-400 dark:text-gray-500">
+                    <i class="fa-solid fa-box-open text-4xl mb-3"></i>
+                    <p>Kotak umpan balik masih kosong.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>
