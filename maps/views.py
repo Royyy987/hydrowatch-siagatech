@@ -222,7 +222,7 @@ def tolak_laporan(request, report_id):
 def kirim_feedback(request):
     pesan = request.POST.get('pesan')
     if pesan:
-        from .models import Feedback # Sesuaikan import jika file models beda folder
+        from reports.models import Feedback 
         Feedback.objects.create(user=request.user, pesan=pesan)
         messages.success(request, "Terima kasih! Feedback kamu berhasil dikirim ke Operator.")
     return redirect('dashboard')
