@@ -96,11 +96,19 @@
             </div>
         </header>
 
+        <div class="px-4 md:px-8 mb-6 z-10">
+            <div class="inline-flex bg-gray-200/50 dark:bg-gray-800 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                <button onclick="filterReports('semua')" id="btn-semua" class="filter-btn px-4 py-2 rounded-lg text-xs md:text-sm font-bold bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white transition-all">Semua</button>
+                <button onclick="filterReports('pending')" id="btn-pending" class="filter-btn px-4 py-2 rounded-lg text-xs md:text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 transition-all">Menunggu Validasi</button>
+                <button onclick="filterReports('valid')" id="btn-valid" class="filter-btn px-4 py-2 rounded-lg text-xs md:text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 transition-all">Sudah Tayang</button>
+            </div>
+        </div>
+
         <div class="flex-1 overflow-auto px-4 pb-6 md:px-8 custom-scrollbar">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {% for lap in laporan_list %}
-                <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/70 shadow-lg overflow-hidden flex flex-col transition-all hover:shadow-xl">
+                <div class="report-card {% if lap.is_active %}status-valid{% else %}status-pending{% endif %} bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/70 shadow-lg overflow-hidden flex flex-col transition-all hover:shadow-xl">
                     
                     <div class="relative w-full h-48 bg-gray-900">
                         {% if lap.image %}
@@ -118,6 +126,10 @@
                         {% if lap.is_active %}
                         <div class="absolute top-3 left-3 bg-green-500/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-black text-[10px] border border-green-400 shadow-lg flex items-center gap-1.5">
                             <i class="fa-solid fa-check-circle"></i> Tayang di Peta
+                        </div>
+                        {% else %}
+                        <div class="absolute top-3 left-3 bg-yellow-500/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-black text-[10px] border border-yellow-400 shadow-lg flex items-center gap-1.5">
+                            <i class="fa-solid fa-hourglass-half"></i> Menunggu Validasi
                         </div>
                         {% endif %}
                     </div>
@@ -195,6 +207,32 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     form.submit(); 
+                }
+            });
+        }
+    </script>
+
+    <script>
+        function filterReports(status) {
+            // Reset semua style tombol
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = "filter-btn px-4 py-2 rounded-lg text-xs md:text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 transition-all";
+            });
+            // Beri efek aktif ke tombol yang diklik
+            const activeBtn = document.getElementById('btn-' + status);
+            activeBtn.className = "filter-btn px-4 py-2 rounded-lg text-xs md:text-sm font-bold bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white transition-all";
+
+            // Sembunyikan/tampilkan kartu
+            const cards = document.querySelectorAll('.report-card');
+            cards.forEach(card => {
+                if (status === 'semua') {
+                    card.style.display = 'flex';
+                } else if (status === 'pending' && card.classList.contains('status-pending')) {
+                    card.style.display = 'flex';
+                } else if (status === 'valid' && card.classList.contains('status-valid')) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
                 }
             });
         }
