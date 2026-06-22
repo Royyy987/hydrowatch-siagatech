@@ -231,7 +231,9 @@ def kirim_feedback(request):
 @login_required
 @user_passes_test(is_operator, login_url='dashboard')
 def daftar_feedback(request):
-    from .models import Feedback
+    # FIX: Ambil dari folder 'reports', bukan dari titik (.)
+    from reports.models import Feedback
+    
     # Ambil semua feedback urut dari yang paling baru
     feedbacks = Feedback.objects.all().order_by('-created_at')
     
