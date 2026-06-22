@@ -51,14 +51,19 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full w-full overflow-hidden">
-        <header class="px-8 py-6 bg-transparent z-10 flex items-center justify-between">
+        
+        <div class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 shadow-sm z-30">
+            <h1 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-envelope-open-text text-blue-500"></i> Umpan Balik
+            </h1>
+            <a href="{% url 'dashboard' %}" class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 p-2 rounded-lg text-sm">
+                <i class="fa-solid fa-xmark"></i>
+            </a>
+        </div>
+        <header class="hidden md:flex px-8 py-6 bg-transparent z-10 items-center justify-between">
             <div>
                 <h1 class="text-3xl font-black text-gray-800 dark:text-white tracking-tight">Kotak Suara Warga</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Saran, masukan, dan laporan kendala dari pengguna aplikasi.</p>
-            </div>
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-xl flex items-center gap-3">
-                <i class="fa-solid fa-inbox text-blue-500"></i>
-                <span class="font-bold text-gray-700 dark:text-gray-200">Total: {{ feedbacks|length }} Pesan</span>
             </div>
         </header>
 
