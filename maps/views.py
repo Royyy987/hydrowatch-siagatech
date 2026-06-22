@@ -184,10 +184,8 @@ def toggle_role_user(request, user_id):
 @login_required
 @user_passes_test(is_operator, login_url='dashboard')
 def laporan_masuk(request):
-    # Ambil semua laporan dari warga, urutkan dari yang paling baru masuk
-    # Asumsi model bernama 'Report', jika di projekmu namanya berbeda (misal FloodReport), tinggal sesuaikan nama modelnya
-    from .models import Report 
-    laporan_list = Report.objects.all().order_by('-created_at')
+    # Gunakan FloodReport dan urutkan berdasarkan timestamp
+    laporan_list = FloodReport.objects.all().order_by('-timestamp')
     
     context = {
         'laporan_list': laporan_list,
@@ -200,12 +198,11 @@ def laporan_masuk(request):
 @user_passes_test(is_operator, login_url='dashboard')
 @require_POST
 def setujui_laporan(request, report_id):
-    from .models import Report
-    laporan = get_object_or_404(Report, id=report_id)
-    laporan.status = 'Disetujui' # Asumsi ada field status di modelmu
+    laporan = get_object_or_404(FloodReport, id=report_id)
+    laporan.is_active = True  # Ubah is_active jadi True agar muncul di peta
     laporan.save()
     
-    messages.success(request, f"Laporan #{laporan.id} berhasil divalidasi dan ditayangkan di peta!")
+    messages.success(request, f"Laporan divalidasi! Poligon banjir ditarik ke peta.")
     return redirect('laporan_masuk')
 
 # --- 6. AKSI OPERATOR: TOLAK / HAPUS LAPORAN ---
@@ -213,11 +210,8 @@ def setujui_laporan(request, report_id):
 @user_passes_test(is_operator, login_url='dashboard')
 @require_POST
 def tolak_laporan(request, report_id):
-    from .models import Report
-    laporan = get_object_or_404(Report, id=report_id)
-    laporan.status = 'Ditolak'
-    # Atau jika mau langsung dihapus dari database, gunakan: laporan.delete()
-    laporan.save()
+    laporan = get_object_or_404(FloodReport, id=report_id)
+    laporan.delete()  # Langsung hapus dari database agar tidak nyampah
     
-    messages.warning(request, f"Laporan #{laporan.id} telah ditolak dan dihapus dari sistem.")
+    messages.warning(request, f"Laporan palsu/spam telah ditolak dan dihapus.")
     return redirect('laporan_masuk')
